@@ -15,10 +15,10 @@ import shutil
 from typing import Optional
 
 try:
-    from mcp.server.fastmcp import FastMCP
+    from fastmcp import FastMCP
 except ImportError:
-    print("Error: The 'mcp' package is not installed.")
-    print("Please install it with: pip install mcp")
+    print("Error: The 'fastmcp' package is not installed.")
+    print("Please install it with: pip install fastmcp")
     raise
 
 
