@@ -26,15 +26,15 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        run: |
-          python3 --version
-          pip3 --version
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
 
       - name: Install MCP dependencies
         run: |
-          pip3 install --user mcp
-          pip3 install --user fastmcp
+          python -m pip install --upgrade pip
+          pip install mcp fastmcp
 
       - name: Verify ROCm installation
         run: |
@@ -57,7 +57,7 @@ jobs:
           cd ${{ github.workspace }}
           
           # Start the server in the background with a timeout
-          timeout 10s python3 mcp/rocminfo_server.py &
+          timeout 10s python mcp/rocminfo_server.py &
           SERVER_PID=$!
           
           # Give it a moment to start
@@ -75,7 +75,7 @@ jobs:
       - name: Test rocminfo function
         run: |
           cd ${{ github.workspace }}
-          python3 -c "
+          python -c "
           import sys
           sys.path.insert(0, 'mcp')
           from rocminfo_server import run_rocminfo
@@ -105,10 +105,15 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
       - name: Install MCP dependencies
         run: |
-          pip3 install --user mcp
-          pip3 install --user fastmcp
+          python -m pip install --upgrade pip
+          pip install mcp fastmcp
 
       - name: Start MCP server as a service
         run: |
@@ -119,7 +124,7 @@ jobs:
           # For now, we'll just demonstrate the server can run
           echo "MCP server is ready to be deployed"
           echo "To run the server manually, execute:"
-          echo "  python3 mcp/rocminfo_server.py"
+          echo "  python mcp/rocminfo_server.py"
           
           # Optional: Create a simple status file
           cat > /tmp/rocminfo-mcp-status.txt << EOF
@@ -128,16 +133,17 @@ jobs:
           Repository: ${{ github.repository }}
           Commit: ${{ github.sha }}
           Deployed at: $(date)
+          Python version: $(python --version)
           
           To start the server:
             cd ${{ github.workspace }}
-            python3 mcp/rocminfo_server.py
+            python mcp/rocminfo_server.py
           
           To use with Claude Desktop, add to claude_desktop_config.json:
           {
             "mcpServers": {
               "iris-rocminfo": {
-                "command": "python3",
+                "command": "python",
                 "args": ["${{ github.workspace }}/mcp/rocminfo_server.py"]
               }
             }
@@ -150,4 +156,4 @@ jobs:
         run: |
           echo "::notice title=MCP Server Ready::ROCminfo MCP server tested and ready for deployment at commit ${{ github.sha }}"
           echo "📋 Deployment location: ${{ github.workspace }}/mcp/rocminfo_server.py"
-          echo "🚀 To start: python3 mcp/rocminfo_server.py"
+          echo "🚀 To start: python mcp/rocminfo_server.py"
