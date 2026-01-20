@@ -26,38 +26,54 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
 
-      - name: Verify Python version
+      - name: Build iris Apptainer image
         run: |
-          python3 --version
-          pip3 --version
-
-      - name: Install MCP dependencies
-        run: |
-          python3 -m pip install --upgrade pip
-          pip3 install --user fastmcp
-
-      - name: Verify ROCm installation
-        run: |
-          if command -v rocminfo &> /dev/null; then
-            echo "✅ rocminfo found at: $(which rocminfo)"
-            rocminfo --version || echo "rocminfo version unavailable"
-          elif [ -f /opt/rocm/bin/rocminfo ]; then
-            echo "✅ rocminfo found at: /opt/rocm/bin/rocminfo"
-            /opt/rocm/bin/rocminfo --version || echo "rocminfo version unavailable"
+          IMAGE_NAME="iris.sif"
+          if [ ! -f apptainer/images/"$IMAGE_NAME" ]; then
+            mkdir -p apptainer/images
+            apptainer build apptainer/images/"$IMAGE_NAME" apptainer/iris.def
           else
-            echo "⚠️ rocminfo not found in standard locations"
-            echo "Checking common ROCm paths..."
-            ls -la /opt/rocm*/bin/rocminfo 2>/dev/null || echo "No ROCm installation found"
+            echo "Using existing Apptainer image: apptainer/images/$IMAGE_NAME"
           fi
 
-      - name: Test MCP server can start
+      - name: Verify Python version in container
+        run: |
+          apptainer exec apptainer/images/iris.sif python3 --version
+          apptainer exec apptainer/images/iris.sif pip3 --version
+
+      - name: Install MCP dependencies in container
+        run: |
+          apptainer exec apptainer/images/iris.sif bash -c "
+            python3 -m pip install --upgrade pip && \
+            pip3 install --user fastmcp
+          "
+
+      - name: Verify ROCm installation in container
+        run: |
+          apptainer exec apptainer/images/iris.sif bash -c "
+            if command -v rocminfo &> /dev/null; then
+              echo '✅ rocminfo found at: \$(which rocminfo)'
+              rocminfo --version || echo 'rocminfo version unavailable'
+            elif [ -f /opt/rocm/bin/rocminfo ]; then
+              echo '✅ rocminfo found at: /opt/rocm/bin/rocminfo'
+              /opt/rocm/bin/rocminfo --version || echo 'rocminfo version unavailable'
+            else
+              echo '⚠️ rocminfo not found in standard locations'
+              echo 'Checking common ROCm paths...'
+              ls -la /opt/rocm*/bin/rocminfo 2>/dev/null || echo 'No ROCm installation found'
+            fi
+          "
+
+      - name: Test MCP server can start in container
         timeout-minutes: 2
         run: |
-          echo "Testing if MCP server starts correctly..."
+          echo "Testing if MCP server starts correctly in container..."
           cd ${{ github.workspace }}
           
           # Start the server in the background with a timeout
-          timeout 10s python3 mcp/rocminfo_server.py &
+          apptainer exec --bind ${{ github.workspace }}:/workspace/iris \
+            apptainer/images/iris.sif \
+            bash -c "cd /workspace/iris && timeout 10s python3 mcp/rocminfo_server.py" &
           SERVER_PID=$!
           
           # Give it a moment to start
@@ -65,17 +81,19 @@ jobs:
           
           # Check if the process is running
           if ps -p $SERVER_PID > /dev/null; then
-            echo "✅ MCP server started successfully (PID: $SERVER_PID)"
+            echo "✅ MCP server started successfully in container (PID: $SERVER_PID)"
             kill $SERVER_PID 2>/dev/null || true
           else
             echo "❌ MCP server failed to start or crashed"
             exit 1
           fi
 
-      - name: Test rocminfo function
+      - name: Test rocminfo function in container
         run: |
           cd ${{ github.workspace }}
-          python3 -c "
+          apptainer exec --bind ${{ github.workspace }}:/workspace/iris \
+            apptainer/images/iris.sif \
+            bash -c "cd /workspace/iris && python3 -c \"
           import sys
           sys.path.insert(0, 'mcp')
           from rocminfo_server import run_rocminfo
@@ -93,7 +111,7 @@ jobs:
           else:
               print('❌ Unexpected output from rocminfo')
               sys.exit(1)
-          "
+          \""
 
   deploy-mcp-server:
     name: Deploy ROCminfo MCP Server
@@ -105,15 +123,17 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
 
-      - name: Verify Python version
+      - name: Verify Python version in container
         run: |
-          python3 --version
-          pip3 --version
+          apptainer exec apptainer/images/iris.sif python3 --version
+          apptainer exec apptainer/images/iris.sif pip3 --version
 
-      - name: Install MCP dependencies
+      - name: Install MCP dependencies in container
         run: |
-          python -m pip install --upgrade pip
-          pip install mcp fastmcp
+          apptainer exec apptainer/images/iris.sif bash -c "
+            python3 -m pip install --upgrade pip && \
+            pip3 install --user mcp fastmcp
+          "
 
       - name: Start MCP server as a service
         run: |
@@ -123,8 +143,8 @@ jobs:
           # Create a systemd service file or use a process manager
           # For now, we'll just demonstrate the server can run
           echo "MCP server is ready to be deployed"
-          echo "To run the server manually, execute:"
-          echo "  python3 mcp/rocminfo_server.py"
+          echo "To run the server manually with Apptainer, execute:"
+          echo "  apptainer exec --bind \$(pwd):/workspace/iris apptainer/images/iris.sif bash -c 'cd /workspace/iris && python3 mcp/rocminfo_server.py'"
           
           # Optional: Create a simple status file
           cat > /tmp/rocminfo-mcp-status.txt << EOF
@@ -133,18 +153,19 @@ jobs:
           Repository: ${{ github.repository }}
           Commit: ${{ github.sha }}
           Deployed at: $(date)
-          Python version: $(python3 --version)
+          Container: Apptainer (apptainer/images/iris.sif)
+          Python version: $(apptainer exec apptainer/images/iris.sif python3 --version)
           
-          To start the server:
+          To start the server with Apptainer:
             cd ${{ github.workspace }}
-            python3 mcp/rocminfo_server.py
+            apptainer exec --bind \$(pwd):/workspace/iris apptainer/images/iris.sif bash -c 'cd /workspace/iris && python3 mcp/rocminfo_server.py'
           
           To use with Claude Desktop, add to claude_desktop_config.json:
           {
             "mcpServers": {
               "iris-rocminfo": {
-                "command": "python3",
-                "args": ["${{ github.workspace }}/mcp/rocminfo_server.py"]
+                "command": "apptainer",
+                "args": ["exec", "--bind", "${{ github.workspace }}:/workspace/iris", "${{ github.workspace }}/apptainer/images/iris.sif", "bash", "-c", "cd /workspace/iris && python3 mcp/rocminfo_server.py"]
               }
             }
           }
@@ -156,4 +177,4 @@ jobs:
         run: |
           echo "::notice title=MCP Server Ready::ROCminfo MCP server tested and ready for deployment at commit ${{ github.sha }}"
           echo "📋 Deployment location: ${{ github.workspace }}/mcp/rocminfo_server.py"
-          echo "🚀 To start: python3 mcp/rocminfo_server.py"
+          echo "🚀 To start: apptainer exec --bind \$(pwd):/workspace/iris apptainer/images/iris.sif bash -c 'cd /workspace/iris && python3 mcp/rocminfo_server.py'"
