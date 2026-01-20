@@ -28,9 +28,15 @@ if [ "$CONTAINER_RUNTIME" = "apptainer" ]; then
     APPTAINER_CACHE_DIR="${RUNNER_WORKSPACE:-$(dirname "$(pwd)")}/apptainer_cache"
     mkdir -p "$APPTAINER_CACHE_DIR"
     
+    # Set Apptainer temp directory to avoid filling up /tmp
+    # Use the same filesystem as the cache directory
+    export APPTAINER_TMPDIR="$APPTAINER_CACHE_DIR/tmp"
+    mkdir -p "$APPTAINER_TMPDIR"
+    
     # Build Apptainer image from definition file (only if it doesn't exist)
     if [ ! -f "$APPTAINER_CACHE_DIR/iris-dev.sif" ]; then
         echo "[INFO] Building new Apptainer image at $APPTAINER_CACHE_DIR/iris-dev.sif..."
+        echo "[INFO] Using temp directory: $APPTAINER_TMPDIR"
         apptainer build "$APPTAINER_CACHE_DIR/iris-dev.sif" apptainer/iris.def
     else
         echo "[INFO] Using existing Apptainer image at $APPTAINER_CACHE_DIR/iris-dev.sif"
