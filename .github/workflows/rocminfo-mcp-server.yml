@@ -52,20 +52,36 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
 
+      - name: Create persistent overlay for this job
+        run: |
+          OVERLAY_PATH="${GITHUB_WORKSPACE}/iris_mcp_overlay_$$.img"
+          apptainer overlay create --size 1024 --create-dir /var/cache/iris "${OVERLAY_PATH}"
+          echo "OVERLAY_PATH=${OVERLAY_PATH}" >> $GITHUB_ENV
+          echo "Created persistent overlay at: ${OVERLAY_PATH}"
+
       - name: Verify Python version in container
         run: |
-          bash .github/scripts/container_exec.sh "python3 --version && pip3 --version"
+          IMAGE_PATH="${RUNNER_WORKSPACE:-$(dirname "$(pwd)")}/apptainer_cache/iris-dev.sif"
+          apptainer exec --overlay "${OVERLAY_PATH}" --no-home --cleanenv \
+            --bind ${PWD}:/iris_workspace --cwd /iris_workspace \
+            "${IMAGE_PATH}" bash -c "python3 --version && pip3 --version"
 
       - name: Install MCP dependencies in container
         run: |
-          bash .github/scripts/container_exec.sh "
+          IMAGE_PATH="${RUNNER_WORKSPACE:-$(dirname "$(pwd)")}/apptainer_cache/iris-dev.sif"
+          apptainer exec --overlay "${OVERLAY_PATH}" --no-home --cleanenv \
+            --bind ${PWD}:/iris_workspace --cwd /iris_workspace \
+            "${IMAGE_PATH}" bash -c "
             python3 -m pip install --upgrade pip && \
             pip3 install mcp fastmcp httpx
           "
 
       - name: Verify ROCm installation in container
         run: |
-          bash .github/scripts/container_exec.sh "
+          IMAGE_PATH="${RUNNER_WORKSPACE:-$(dirname "$(pwd)")}/apptainer_cache/iris-dev.sif"
+          apptainer exec --overlay "${OVERLAY_PATH}" --no-home --cleanenv \
+            --bind ${PWD}:/iris_workspace --cwd /iris_workspace \
+            "${IMAGE_PATH}" bash -c "
             if command -v rocminfo &> /dev/null; then
               echo '✅ rocminfo found at: \$(which rocminfo)'
               rocminfo --version || echo 'rocminfo version unavailable'
@@ -83,9 +99,12 @@ jobs:
         timeout-minutes: 2
         run: |
           echo "Testing if MCP server starts correctly in container..."
+          IMAGE_PATH="${RUNNER_WORKSPACE:-$(dirname "$(pwd)")}/apptainer_cache/iris-dev.sif"
           
           # Start the server in the background with a timeout
-          bash .github/scripts/container_exec.sh "timeout 10s python3 mcp/rocminfo_server.py" &
+          apptainer exec --overlay "${OVERLAY_PATH}" --no-home --cleanenv \
+            --bind ${PWD}:/iris_workspace --cwd /iris_workspace \
+            "${IMAGE_PATH}" bash -c "timeout 10s python3 mcp/rocminfo_server.py" &
           SERVER_PID=$!
           
           # Give it a moment to start
@@ -102,7 +121,10 @@ jobs:
 
       - name: Test rocminfo function in container
         run: |
-          bash .github/scripts/container_exec.sh "
+          IMAGE_PATH="${RUNNER_WORKSPACE:-$(dirname "$(pwd)")}/apptainer_cache/iris-dev.sif"
+          apptainer exec --overlay "${OVERLAY_PATH}" --no-home --cleanenv \
+            --bind ${PWD}:/iris_workspace --cwd /iris_workspace \
+            "${IMAGE_PATH}" bash -c "
           python3 -c \"
           import sys
           sys.path.insert(0, 'mcp')
@@ -123,6 +145,12 @@ jobs:
               sys.exit(1)
           \""
 
+      - name: Cleanup overlay
+        if: always()
+        run: |
+          rm -f "${OVERLAY_PATH}" 2>/dev/null || true
+          echo "Cleaned up overlay: ${OVERLAY_PATH}"
+
   deploy-mcp-server:
     name: Deploy ROCminfo MCP Server
     needs: test-mcp-server
@@ -133,13 +161,26 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
 
+      - name: Create persistent overlay for this job
+        run: |
+          OVERLAY_PATH="${GITHUB_WORKSPACE}/iris_mcp_deploy_overlay_$$.img"
+          apptainer overlay create --size 1024 --create-dir /var/cache/iris "${OVERLAY_PATH}"
+          echo "OVERLAY_PATH=${OVERLAY_PATH}" >> $GITHUB_ENV
+          echo "Created persistent overlay at: ${OVERLAY_PATH}"
+
       - name: Verify Python version in container
         run: |
-          bash .github/scripts/container_exec.sh "python3 --version && pip3 --version"
+          IMAGE_PATH="${RUNNER_WORKSPACE:-$(dirname "$(pwd)")}/apptainer_cache/iris-dev.sif"
+          apptainer exec --overlay "${OVERLAY_PATH}" --no-home --cleanenv \
+            --bind ${PWD}:/iris_workspace --cwd /iris_workspace \
+            "${IMAGE_PATH}" bash -c "python3 --version && pip3 --version"
 
       - name: Install MCP dependencies in container
         run: |
-          bash .github/scripts/container_exec.sh "
+          IMAGE_PATH="${RUNNER_WORKSPACE:-$(dirname "$(pwd)")}/apptainer_cache/iris-dev.sif"
+          apptainer exec --overlay "${OVERLAY_PATH}" --no-home --cleanenv \
+            --bind ${PWD}:/iris_workspace --cwd /iris_workspace \
+            "${IMAGE_PATH}" bash -c "
             python3 -m pip install --upgrade pip && \
             pip3 install mcp fastmcp httpx
           "
@@ -147,23 +188,21 @@ jobs:
       - name: Start MCP server as a service
         run: |
           echo "Starting ROCminfo MCP server..."
+          IMAGE_PATH="${RUNNER_WORKSPACE:-$(dirname "$(pwd)")}/apptainer_cache/iris-dev.sif"
           
           # Create a systemd service file or use a process manager
           # For now, we'll just demonstrate the server can run
           echo "MCP server is ready to be deployed"
-          echo "To run the server manually with container_exec.sh:"
-          echo "  bash .github/scripts/container_exec.sh 'python3 mcp/rocminfo_server.py'"
+          echo "To run the server manually with Apptainer:"
+          echo "  apptainer exec --overlay <overlay> \${IMAGE_PATH} bash -c 'cd <workspace> && python3 mcp/rocminfo_server.py'"
           
           # Detect which container runtime is being used
           if command -v apptainer &> /dev/null; then
             CONTAINER_TYPE="Apptainer"
-            IMAGE_PATH="${RUNNER_WORKSPACE:-$(dirname "$(pwd)")}/apptainer_cache/iris-dev.sif"
           elif command -v docker &> /dev/null; then
             CONTAINER_TYPE="Docker"
-            IMAGE_PATH="${DOCKER_IMAGE_NAME}"
           else
             CONTAINER_TYPE="Unknown"
-            IMAGE_PATH="N/A"
           fi
           
           # Optional: Create a simple status file
@@ -175,20 +214,12 @@ jobs:
           Deployed at: $(date)
           Container Type: ${CONTAINER_TYPE}
           Image: ${IMAGE_PATH}
-          Python version: $(bash .github/scripts/container_exec.sh "python3 --version" 2>&1 | grep -o "Python.*")
+          Python version: $(apptainer exec --overlay "${OVERLAY_PATH}" --no-home --cleanenv --bind ${PWD}:/iris_workspace --cwd /iris_workspace "${IMAGE_PATH}" python3 --version 2>&1)
           
-          To start the server with the helper script:
-            bash .github/scripts/container_exec.sh "python3 mcp/rocminfo_server.py"
-          
-          To use with Claude Desktop, add to claude_desktop_config.json:
-          {
-            "mcpServers": {
-              "iris-rocminfo": {
-                "command": "bash",
-                "args": ["${{ github.workspace }}/.github/scripts/container_exec.sh", "python3 mcp/rocminfo_server.py"]
-              }
-            }
-          }
+          To start the server with Apptainer:
+            1. Create an overlay: apptainer overlay create --size 1024 overlay.img
+            2. Install dependencies: apptainer exec --overlay overlay.img ${IMAGE_PATH} pip install mcp fastmcp httpx
+            3. Run server: apptainer exec --overlay overlay.img --bind \$(pwd):/workspace ${IMAGE_PATH} bash -c 'cd /workspace && python3 mcp/rocminfo_server.py'
           EOF
           
           cat /tmp/rocminfo-mcp-status.txt
@@ -197,5 +228,11 @@ jobs:
         run: |
           echo "::notice title=MCP Server Ready::ROCminfo MCP server tested and ready for deployment at commit ${{ github.sha }}"
           echo "📋 Deployment location: ${{ github.workspace }}/mcp/rocminfo_server.py"
-          echo "🚀 To start: bash .github/scripts/container_exec.sh 'python3 mcp/rocminfo_server.py'"
+          echo "🚀 Container image: ${RUNNER_WORKSPACE:-$(dirname "$(pwd)")}/apptainer_cache/iris-dev.sif"
+
+      - name: Cleanup overlay
+        if: always()
+        run: |
+          rm -f "${OVERLAY_PATH}" 2>/dev/null || true
+          echo "Cleaned up overlay: ${OVERLAY_PATH}"
 
