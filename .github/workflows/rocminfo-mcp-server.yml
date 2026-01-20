@@ -34,7 +34,7 @@ jobs:
       - name: Install MCP dependencies
         run: |
           python3 -m pip install --upgrade pip
-          pip3 install --user mcp fastmcp
+          pip3 install --user fastmcp
 
       - name: Verify ROCm installation
         run: |
