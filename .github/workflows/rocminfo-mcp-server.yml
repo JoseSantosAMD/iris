@@ -121,7 +121,6 @@ jobs:
             --bind ${PYTHON_PKGS_DIR}:/mcp_packages \
             --env PYTHONUSERBASE=/mcp_packages \
             --env PATH=/mcp_packages/bin:/opt/conda/envs/py_3.10/bin:/usr/local/bin:/usr/bin:/bin \
-            --env PYTHONPATH=/mcp_packages/lib/python3.10/site-packages \
             "${IMAGE_PATH}" bash -c "timeout 10s python3 mcp/rocminfo_server.py" &
           SERVER_PID=$!
           
@@ -145,7 +144,6 @@ jobs:
             --bind ${PYTHON_PKGS_DIR}:/mcp_packages \
             --env PYTHONUSERBASE=/mcp_packages \
             --env PATH=/mcp_packages/bin:/opt/conda/envs/py_3.10/bin:/usr/local/bin:/usr/bin:/bin \
-            --env PYTHONPATH=/mcp_packages/lib/python3.10/site-packages \
             "${IMAGE_PATH}" bash -c "
           python3 -c \"
           import sys
