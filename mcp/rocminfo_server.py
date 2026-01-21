@@ -87,11 +87,7 @@ def run_rocminfo() -> str:
 
 
 # Create MCP server
-mcp = FastMCP(
-    name="rocminfo-server",
-    version="1.0.0",
-    description="MCP server exposing AMD ROCm rocminfo utility for querying GPU and HSA system information"
-)
+mcp = FastMCP("rocminfo-server")
 
 
 @mcp.tool()
