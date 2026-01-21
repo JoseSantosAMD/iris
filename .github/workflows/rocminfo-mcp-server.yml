@@ -141,7 +141,7 @@ jobs:
         run: |
           IMAGE_PATH="${RUNNER_WORKSPACE:-$(dirname "$(pwd)")}/apptainer_cache/iris-dev.sif"
           apptainer exec --overlay "${OVERLAY_PATH}" --no-home --cleanenv \
-            --bind ${PWD}:/iris_workspace --cwd /iris_workspace \
+            --bind ${PWD}:/iris_workspace --cwd /iris_workspace/mcp \
             --bind ${PYTHON_PKGS_DIR}:/mcp_packages \
             --env PYTHONUSERBASE=/mcp_packages \
             --env PATH=/mcp_packages/bin:/opt/conda/envs/py_3.10/bin:/usr/local/bin:/usr/bin:/bin \
@@ -149,7 +149,6 @@ jobs:
             "${IMAGE_PATH}" bash -c "
           python3 -c \"
           import sys
-          sys.path.insert(0, 'mcp')
           from rocminfo_server import run_rocminfo
           
           result = run_rocminfo()
