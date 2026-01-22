@@ -1,0 +1,14 @@
+{
+    "servers": {
+        "io.github.github/github-mcp-server": {
+            "type": "stdio",
+            "command": "apptainer",
+            "args": [
+                "run",
+                "docker://ghcr.io/github/github-mcp-server:0.28.1"
+            ],
+            "gallery": "https://api.mcp.github.com",
+            "version": "0.28.1"
+        }
+    }
+}
