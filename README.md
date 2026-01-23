@@ -112,7 +112,7 @@ def _worker(rank, world_size):
     )
 
     # Step 2: Initialize Iris with symmetric heap
-    heap_size = 2**30   # 1 GiB symmetric heap for inter-GPU communication
+    heap_size = 2**30   # 1GiB symmetric heap for inter-GPU communication
     iris_ctx = iris.iris(heap_size)
     cur_rank = iris_ctx.get_rank()
 
@@ -199,7 +199,7 @@ def _worker(rank, world_size):
     )
 
     # Step 2: Initialize Iris Gluon context
-    heap_size = 2**30   # 1 GiB symmetric heap
+    heap_size = 2**30   # 1GiB symmetric heap
     iris_ctx = iris_gl.iris(heap_size)
     context_tensor = iris_ctx.get_device_context()  # Get encoded context
     cur_rank = iris_ctx.get_rank()
