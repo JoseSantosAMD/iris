@@ -40,16 +40,23 @@ Iris is a Triton-based framework for Remote Memory Access (RMA) operations devel
 
 ## Documentation
 
-- [Setup Alternatives](https://rocm.github.io/iris/getting-started/installation.html)
-- [Examples](https://rocm.github.io/iris/reference/examples.html)
-- [Programming Model](https://rocm.github.io/iris/conceptual/programming-model.html)
-- [Taxonomy of Multi-GPU Programming Patterns](https://rocm.github.io/iris/conceptual/taxonomy.html)
-- [Fine-grained GEMM & Communication Overlap](https://rocm.github.io/iris/conceptual/finegrained-overlap.html)
-- [API Reference](https://rocm.github.io/iris/reference/api-reference.html)
+Comprehensive documentation is available at [rocm.github.io/iris](https://rocm.github.io/iris/):
+
+**Getting Started**
+- [Installation Guide](https://rocm.github.io/iris/getting-started/installation.html) - Detailed setup instructions for all platforms
+
+**Conceptual Guides**
+- [Programming Model](https://rocm.github.io/iris/conceptual/programming-model.html) - Understanding Iris fundamentals
+- [Taxonomy of Multi-GPU Programming Patterns](https://rocm.github.io/iris/conceptual/taxonomy.html) - Design patterns and best practices
+- [Fine-grained GEMM & Communication Overlap](https://rocm.github.io/iris/conceptual/finegrained-overlap.html) - Advanced optimization techniques
+
+**API References**
+- [API Reference](https://rocm.github.io/iris/reference/api-reference.html) - Complete API documentation
+- [Examples](https://rocm.github.io/iris/reference/examples.html) - Ready-to-run code examples
 
 ## API Example
 
-Here's a simple example showing how to perform remote memory operations between GPUs using Iris:
+Here's a complete example demonstrating remote memory operations between GPUs using Iris. This example shows how rank 0 writes directly to rank 1's memory:
 
 ```python
 import torch
@@ -59,26 +66,42 @@ import triton
 import triton.language as tl
 import iris
 
-# Device-side APIs
+# Device-side kernel: Performs remote memory store operation
 @triton.jit
 def kernel(buffer, buffer_size: tl.constexpr, block_size: tl.constexpr, heap_bases_ptr):
-    # Compute start index of this block
+    """
+    Kernel that writes to a remote GPU's memory.
+    
+    Args:
+        buffer: Pointer to the buffer in symmetric heap
+        buffer_size: Total size of the buffer
+        block_size: Number of elements processed per thread block
+        heap_bases_ptr: Pointer to heap base addresses for all ranks
+    """
+    # Compute start index for this thread block
     pid = tl.program_id(0)
     block_start = pid * block_size
     offsets = block_start + tl.arange(0, block_size)
 
-    # Guard for out-of-bounds accesses
+    # Guard against out-of-bounds memory accesses
     mask = offsets < buffer_size
 
-    # Store 1 in the target buffer at each offset
-    source_rank = 0
-    target_rank = 1
+    # Remote memory store: Rank 0 writes value 1 to Rank 1's buffer
+    source_rank = 0  # Current rank performing the write
+    target_rank = 1  # Destination rank's memory
     iris.store(buffer + offsets, 1,
             source_rank, target_rank,
             heap_bases_ptr, mask=mask)
 
 def _worker(rank, world_size):
-    # Torch distributed initialization
+    """
+    Worker function executed by each GPU process.
+    
+    Args:
+        rank: Current process rank (GPU ID)
+        world_size: Total number of processes (GPUs)
+    """
+    # Step 1: Initialize PyTorch distributed backend
     device_id = rank % torch.cuda.device_count()
     dist.init_process_group(
         backend="nccl",
@@ -88,17 +111,17 @@ def _worker(rank, world_size):
         device_id=torch.device(f"cuda:{device_id}")
     )
 
-    # Iris initialization
+    # Step 2: Initialize Iris with symmetric heap
     heap_size = 2**30   # 1GiB symmetric heap for inter-GPU communication
     iris_ctx = iris.iris(heap_size)
     cur_rank = iris_ctx.get_rank()
 
-    # Iris tensor allocation
-    buffer_size = 4096  # 4K elements buffer
+    # Step 3: Allocate buffer in symmetric heap (visible to all ranks)
+    buffer_size = 4096  # 4K elements (16KB for float32)
     buffer = iris_ctx.zeros(buffer_size, device="cuda", dtype=torch.float32)
 
-    # Launch the kernel on rank 0
-    block_size = 1024
+    # Step 4: Launch kernel on source rank (rank 0)
+    block_size = 1024  # Process 1024 elements per thread block
     grid = lambda meta: (triton.cdiv(buffer_size, meta["block_size"]),)
     source_rank = 0
     if cur_rank == source_rank:
@@ -109,18 +132,20 @@ def _worker(rank, world_size):
             iris_ctx.get_heap_bases(),
         )
 
-    # Synchronize all ranks
+    # Step 5: Synchronize all ranks before cleanup
     iris_ctx.barrier()
+    
+    # Step 6: Clean up distributed environment
     dist.destroy_process_group()
 
 if __name__ == "__main__":
-    world_size = 2  # Using two ranks
+    world_size = 2  # Run with 2 GPUs
     mp.spawn(_worker, args=(world_size,), nprocs=world_size, join=True)
 ```
 
 ### Gluon-style API (Experimental)
 
-Iris also provides an experimental cleaner API using Triton's Gluon with `@gluon.jit` decorator:
+Iris provides an experimental backend using Triton's Gluon language for users seeking maximal performance and hardware-level control. Gluon offers explicit control over layouts, memory, and data movement.
 
 > [!NOTE]
 > **Requirements for Gluon backend**: ROCm 7.0+ and Triton commit [aafec417bded34db6308f5b3d6023daefae43905](https://github.com/triton-lang/triton/tree/aafec417bded34db6308f5b3d6023daefae43905) or later are required to use the experimental Gluon APIs.
@@ -133,25 +158,37 @@ from triton.experimental import gluon
 from triton.experimental.gluon import language as gl
 import iris.experimental.iris_gluon as iris_gl
 
-# Device-side APIs - context encapsulates heap_bases
+# Device-side kernel using Gluon's cleaner API
 @gluon.jit
 def kernel(IrisDeviceCtx: gl.constexpr, context_tensor,
           buffer, buffer_size: gl.constexpr, block_size: gl.constexpr):
-    # Initialize device context from tensor
+    """
+    Gluon-based kernel with cleaner API - context encapsulates heap_bases.
+    
+    Args:
+        IrisDeviceCtx: Iris device context type
+        context_tensor: Encoded device context containing heap information
+        buffer: Buffer pointer in symmetric heap
+        buffer_size: Total buffer size
+        block_size: Elements per thread block
+    """
+    # Initialize device context from tensor (no need for separate heap_bases!)
     ctx = IrisDeviceCtx.initialize(context_tensor)
     
+    # Compute offsets with explicit memory layout
     pid = gl.program_id(0)
     block_start = pid * block_size
     layout: gl.constexpr = gl.BlockedLayout([1], [64], [1], [0])
     offsets = block_start + gl.arange(0, block_size, layout=layout)
     mask = offsets < buffer_size
 
-    # Store 1 in the target buffer - no need to pass heap_bases separately!
+    # Remote store using cleaner context-based API
     target_rank = 1
     ctx.store(buffer + offsets, 1, target_rank, mask=mask)
 
 def _worker(rank, world_size):
-    # Torch distributed initialization
+    """Worker function for Gluon-based example."""
+    # Step 1: Initialize PyTorch distributed backend
     device_id = rank % torch.cuda.device_count()
     dist.init_process_group(
         backend="nccl",
@@ -161,17 +198,17 @@ def _worker(rank, world_size):
         device_id=torch.device(f"cuda:{device_id}")
     )
 
-    # Iris initialization
+    # Step 2: Initialize Iris Gluon context
     heap_size = 2**30   # 1GiB symmetric heap
     iris_ctx = iris_gl.iris(heap_size)
     context_tensor = iris_ctx.get_device_context()  # Get encoded context
     cur_rank = iris_ctx.get_rank()
     
-    # Iris tensor allocation
-    buffer_size = 4096  # 4K elements buffer
+    # Step 3: Allocate buffer in symmetric heap
+    buffer_size = 4096  # 4K elements (16KB for float32)
     buffer = iris_ctx.zeros(buffer_size, device="cuda", dtype=torch.float32)
     
-    # Launch the kernel on rank 0
+    # Step 4: Launch kernel with Gluon's simplified grid syntax
     block_size = 1024
     grid = (buffer_size + block_size - 1) // block_size
     source_rank = 0
@@ -179,51 +216,109 @@ def _worker(rank, world_size):
         kernel[(grid,)](iris_gl.IrisDeviceCtx, context_tensor, 
                        buffer, buffer_size, block_size, num_warps=1)
 
-    # Synchronize all ranks
+    # Step 5: Synchronize and cleanup
     iris_ctx.barrier()
     dist.destroy_process_group()
 
 if __name__ == "__main__":
-    world_size = 2  # Using two ranks
+    world_size = 2  # Run with 2 GPUs
     mp.spawn(_worker, args=(world_size,), nprocs=world_size, join=True)
 ```
 
+**Key Differences in Gluon API**:
+- Context encapsulation: `ctx.store()` instead of passing `heap_bases_ptr` separately
+- Explicit memory layouts: `gl.BlockedLayout` for fine-grained control
+- Simplified grid syntax: `kernel[(grid,)](...)` instead of `kernel[grid](...)`
+- Lower-level control: Ideal for performance optimization and hardware-specific tuning
+
+## Prerequisites
+
+Before installing Iris, ensure your system meets these requirements:
+
+- **Python**: Version 3.10 or higher
+- **PyTorch**: Version 2.0+ with ROCm support
+- **ROCm**: Version 6.3.1 or higher with HIP runtime
+- **Triton**: Latest version compatible with your ROCm installation
+- **Build Tools**: setuptools>=61 for installation
+- **AMD GPU**: MI300X, MI350X, or MI355X (other ROCm-compatible GPUs may work)
+
+> [!TIP]
+> For development without AMD GPU access, you can still contribute code changes. Our CI pipelines will test your changes automatically. See the [Contributing Guide](docs/CONTRIBUTING.md) for details.
+
 ## Quick Start Guide
 
-### Quick Installation
+### Option 1: Quick Installation (Recommended for Users)
 
-> [!NOTE]
-> **Requirements**: Python 3.10+, PyTorch 2.0+ (ROCm version), ROCm 6.3.1+ HIP runtime, Triton, and setuptools>=61
-
-For a quick installation directly from the repository:
+Install directly from the repository for immediate use:
 
 ```shell
 pip install git+https://github.com/ROCm/iris.git
 ```
 
-### Docker Compose (Recommended for Development)
+### Option 2: Docker Compose (Recommended for Development)
 
-The recommended way to get started is using Docker Compose, which provides a development environment with the Iris directory mounted inside the container. This allows you to make changes to the code outside the container and see them reflected inside.
+Docker Compose provides a complete development environment with all dependencies pre-configured. The Iris directory is mounted inside the container, allowing you to edit code outside and see changes reflected inside.
 
 ```shell
-# Start the development container
+# Start the development container (first build takes 45-60 minutes)
 docker compose up --build -d
 
-# or depending on your docker version
+# Alternative for older Docker versions
 docker-compose up --build -d
 
 # Attach to the running container
 docker attach iris-dev
 
-# Install Iris in development mode
-cd iris && pip install -e .
+# Install Iris in development mode inside the container
+cd iris && pip install -e ".[dev]"
 ```
 
-For baremetal install, Docker or Apptainer setup, see [Installation](https://rocm.github.io/iris/getting-started/installation.html).
+### Option 3: Local Development
+
+For baremetal installation, alternative Docker setups, or Apptainer configuration, see our detailed [Installation Guide](https://rocm.github.io/iris/getting-started/installation.html).
+
+## Running Your First Example
+
+After installation, verify your setup by running a basic example:
+
+```shell
+# Run the load benchmark example
+python examples/00_load/load_bench.py
+
+# Run unit tests to verify installation
+pytest tests/unittests/
+
+# Run specific example tests
+pytest tests/examples/test_load_bench.py
+```
 
 ## Next Steps
 
-Check out our [examples](examples/) directory for ready-to-run scripts and usage patterns, including peer-to-peer communication and GEMM benchmarks.
+- **Explore Examples**: Check out our [examples](examples/) directory for ready-to-run scripts covering:
+  - Peer-to-peer communication patterns
+  - GEMM benchmarks with communication overlap
+  - FlashDecode implementations
+  - All-reduce and all-gather operations
+- **Read Documentation**: Visit our [comprehensive documentation](https://rocm.github.io/iris/) for in-depth guides
+- **Try Tutorials**: Start with [Programming Model](https://rocm.github.io/iris/conceptual/programming-model.html) to understand Iris fundamentals
+
+## Troubleshooting
+
+### Common Issues
+
+**Issue**: `ModuleNotFoundError: No module named 'iris'`
+- **Solution**: Ensure you've installed Iris with `pip install -e .` or `pip install git+https://github.com/ROCm/iris.git`
+
+**Issue**: Docker build fails or takes too long
+- **Solution**: The first Docker build takes 45-60 minutes. Do not cancel the build. Use `docker compose up --build -d` and let it complete.
+
+**Issue**: CUDA/HIP errors or GPU not found
+- **Solution**: Verify ROCm is properly installed with `rocm-smi` and check that your GPU is supported (MI300X, MI350X, or MI355X)
+
+**Issue**: Import errors with Triton or Gluon
+- **Solution**: For Gluon backend, ensure you have ROCm 7.0+ and Triton commit [aafec417](https://github.com/triton-lang/triton/tree/aafec417bded34db6308f5b3d6023daefae43905) or later
+
+For more issues, see our [GitHub Issues](https://github.com/ROCm/iris/issues) or contact the team.
 
 ## Supported GPUs
 
