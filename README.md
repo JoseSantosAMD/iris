@@ -66,7 +66,7 @@ Iris is a Triton-based framework for Remote Memory Access (RMA) operations devel
 
 ### Basic Remote Memory Operations
 
-Here's a simple example showing how to perform remote memory operations between GPUs using Iris. This example demonstrates the core concept of one GPU (rank 0) directly writing to another GPU's (rank 1) memory:
+Here's a simple example demonstrating how one GPU (rank 0) directly writes to another GPU's (rank 1) memory using Iris:
 
 ```python
 import torch
@@ -142,15 +142,15 @@ This example shows the key concepts:
 
 ### Gluon-style API (Experimental)
 
-Iris also provides an experimental API using Triton's Gluon language for users who need finer-grained control over memory layouts and data movement. The Gluon backend offers a cleaner API by encapsulating heap bases within a device context:
+Iris also provides an experimental API using Triton's Gluon language. The Gluon backend offers both cleaner syntax and more fine-grained control over memory layouts and data movement when needed:
 
 > [!NOTE]
 > **Requirements for Gluon backend**: ROCm 7.0+ and Triton commit [aafec417bded34db6308f5b3d6023daefae43905](https://github.com/triton-lang/triton/tree/aafec417bded34db6308f5b3d6023daefae43905) or later are required to use the experimental Gluon APIs.
 
-Key differences from the standard API:
-- Device context encapsulates heap bases
-- More explicit control over memory layouts
-- Ideal for performance-critical applications
+Key advantages over the standard API:
+- Device context encapsulates heap bases (no need to pass `heap_bases_ptr` separately)
+- Explicit control over memory layouts for performance-critical applications
+- Cleaner, more maintainable code
 
 ```python
 import torch
@@ -215,8 +215,6 @@ if __name__ == "__main__":
     mp.spawn(_worker, args=(world_size,), nprocs=world_size, join=True)
 ```
 
-The Gluon API provides cleaner syntax by eliminating the need to pass `heap_bases_ptr` separately, making the code more maintainable and easier to read.
-
 ## Quick Start Guide
 
 ### Prerequisites
@@ -258,9 +256,6 @@ docker attach iris-dev
 # Install Iris in development mode
 cd iris && pip install -e ".[dev]"
 ```
-
-> [!IMPORTANT]
-> The initial Docker build can take 45-60 minutes. Please be patient and do not cancel the build process.
 
 ### Running Your First Example
 
@@ -308,10 +303,10 @@ We plan to extend Iris with the following features:
 #### Build Failures
 
 **Issue**: Docker build takes too long or appears stuck
-- **Solution**: The initial build can take 45-60 minutes. This is normal. Do not cancel the process.
+- **Solution**: The initial build can take 45-60 minutes. This is normal. Please be patient and do not cancel the build process.
 
 **Issue**: ROCm/HIP compilation errors
-- **Solution**: Ensure you have ROCm 6.3.1 or higher installed. Check your ROCm version with `rocm-smi --version`.
+- **Solution**: Ensure you have ROCm 6.3.1 or higher installed. Check with `/opt/rocm/bin/rocminfo` or verify ROCm packages.
 
 #### Runtime Errors
 
@@ -319,7 +314,7 @@ We plan to extend Iris with the following features:
 - **Solution**: Verify AMD GPU is detected with `rocm-smi`. Ensure ROCm drivers are properly installed.
 
 **Issue**: `ImportError: cannot import name 'iris'`
-- **Solution**: Ensure Iris is installed with `pip install -e ".[dev]"` in the repository directory.
+- **Solution**: Ensure Iris is installed with `pip install -e ".[dev]"` in the Iris repository directory.
 
 **Issue**: NCCL initialization failures
 - **Solution**: Check that PyTorch is built with ROCm support. Verify with `python -c "import torch; print(torch.version.hip)"`.
@@ -327,7 +322,7 @@ We plan to extend Iris with the following features:
 #### Development Without GPU
 
 **Issue**: I don't have access to an AMD GPU
-- **Solution**: You can still contribute! Make code changes locally and rely on CI testing. Run linting locally with `ruff check . --fix && ruff format .`.
+- **Solution**: You can still contribute! Make code changes locally and rely on CI testing. Install dev dependencies with `pip install -e ".[dev]"` and run linting locally with `ruff check . --fix && ruff format .`.
 
 ### Getting Help
 
@@ -340,7 +335,7 @@ If you encounter issues not covered here:
    - Steps to reproduce the problem
    - Full error messages and logs
 
-# Contributing
+## Contributing
 
 We welcome contributions! Please see our [Contributing Guide](docs/CONTRIBUTING.md) for details on how to set up your development environment and contribute to the project.
 
