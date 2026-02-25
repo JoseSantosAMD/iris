@@ -16,16 +16,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         
-      - name: Create task venv for Copilot
+      - name: Install Iris into container venv
         run: |
-          python3 -m venv $GITHUB_WORKSPACE/.venv
-          source $GITHUB_WORKSPACE/.venv/bin/activate
-          python -m pip install --upgrade pip
-          python -m pip install -e .
+          /opt/venv/bin/pip install -e .
 
-      - name: Make venv default for subsequent steps
+      - name: Make container venv default for subsequent steps
         run: |
-          echo "$GITHUB_WORKSPACE/.venv/bin" >> $GITHUB_PATH
+          echo "/opt/venv/bin" >> $GITHUB_PATH
 
       - name: Verify ROCm and GPU visibility
         run: |
