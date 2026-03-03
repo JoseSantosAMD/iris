@@ -16,7 +16,7 @@ jobs:
       contents: read
       pull-requests: read
 
-    timeout-minutes: 600
+    timeout-minutes: 59
 
     steps:
       - name: Checkout repository
@@ -24,9 +24,10 @@ jobs:
 
       - name: Create task venv for Copilot
         run: |
-          python3 -m venv $GITHUB_WORKSPACE/.venv
+          python3 -m venv --system-site-packages $GITHUB_WORKSPACE/.venv
           source $GITHUB_WORKSPACE/.venv/bin/activate
           python -m pip install --upgrade pip
+          python -m pip install -e .
 
       - name: Make venv default for subsequent steps
         run: |
