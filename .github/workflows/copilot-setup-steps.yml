@@ -20,9 +20,9 @@ jobs:
 
     env:
       PIP_CACHE_DIR: ${{ env.RUNNER_WORKDIR }}/.pip-cache
-      PIP_NO_CACHE_DIR: 1
       TMPDIR: ${{ env.RUNNER_WORKDIR }}/.tmp
       UV_CACHE_DIR: ${{ env.RUNNER_WORKDIR }}/.uv-cache
+      XDG_CACHE_HOME: ${{ env.RUNNER_WORKDIR }}/.cache
 
     steps:
       - name: Checkout repository
@@ -31,24 +31,24 @@ jobs:
       - name: Create task venv for Copilot
         run: |
           cd "$GITHUB_WORKSPACE"
-          mkdir -p "${RUNNER_WORKDIR}/.pip-cache" "${RUNNER_WORKDIR}/.tmp" "${RUNNER_WORKDIR}/.uv-cache"
+          mkdir -p "${RUNNER_WORKDIR}/.pip-cache" "${RUNNER_WORKDIR}/.tmp" "${RUNNER_WORKDIR}/.uv-cache" "${RUNNER_WORKDIR}/.cache"
           python3 -m venv --system-site-packages .venv
           source .venv/bin/activate
           python -m pip install --upgrade pip
-          python -m pip install -e .
+          python -m pip install -e . --cache-dir "${RUNNER_WORKDIR}/.pip-cache"
 
       - name: Install IntelliKit Python packages
         run: |
           source "$GITHUB_WORKSPACE/.venv/bin/activate"
-          pip install "git+https://github.com/AMDResearch/intellikit.git#subdirectory=accordo"
-          pip install "git+https://github.com/AMDResearch/intellikit.git#subdirectory=linex"
-          pip install "git+https://github.com/AMDResearch/intellikit.git#subdirectory=metrix"
-          pip install "git+https://github.com/AMDResearch/intellikit.git#subdirectory=nexus"
+          pip install --cache-dir "${RUNNER_WORKDIR}/.pip-cache" "git+https://github.com/AMDResearch/intellikit.git#subdirectory=accordo"
+          pip install --cache-dir "${RUNNER_WORKDIR}/.pip-cache" "git+https://github.com/AMDResearch/intellikit.git#subdirectory=linex"
+          pip install --cache-dir "${RUNNER_WORKDIR}/.pip-cache" "git+https://github.com/AMDResearch/intellikit.git#subdirectory=metrix"
+          pip install --cache-dir "${RUNNER_WORKDIR}/.pip-cache" "git+https://github.com/AMDResearch/intellikit.git#subdirectory=nexus"
 
       - name: Install uv for MCP servers
         run: |
           source "$GITHUB_WORKSPACE/.venv/bin/activate"
-          pip install uv
+          pip install --cache-dir "${RUNNER_WORKDIR}/.pip-cache" uv
 
       - name: Clone IntelliKit for MCP servers
         run: |
