@@ -54,6 +54,7 @@ jobs:
 
       - name: Clone IntelliKit for MCP servers
         run: |
+          rm -rf "$GITHUB_WORKSPACE/.intellikit"
           git clone --depth 1 https://github.com/AMDResearch/intellikit.git "$GITHUB_WORKSPACE/.intellikit"
 
       - name: Install IntelliKit agent skills
