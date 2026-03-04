@@ -19,6 +19,7 @@ jobs:
     timeout-minutes: 59
 
     env:
+      HOME: ${{ env.RUNNER_WORKDIR }}/.home
       PIP_CACHE_DIR: ${{ env.RUNNER_WORKDIR }}/.pip-cache
       TMPDIR: ${{ env.RUNNER_WORKDIR }}/.tmp
       UV_CACHE_DIR: ${{ env.RUNNER_WORKDIR }}/.uv-cache
@@ -31,7 +32,7 @@ jobs:
       - name: Create task venv for Copilot
         run: |
           cd "$GITHUB_WORKSPACE"
-          mkdir -p "${RUNNER_WORKDIR}/.pip-cache" "${RUNNER_WORKDIR}/.tmp" "${RUNNER_WORKDIR}/.uv-cache" "${RUNNER_WORKDIR}/.cache"
+          mkdir -p "${RUNNER_WORKDIR}/.home" "${RUNNER_WORKDIR}/.pip-cache" "${RUNNER_WORKDIR}/.tmp" "${RUNNER_WORKDIR}/.uv-cache" "${RUNNER_WORKDIR}/.cache"
           python3 -m venv --system-site-packages .venv
           source .venv/bin/activate
           python -m pip install --upgrade pip
