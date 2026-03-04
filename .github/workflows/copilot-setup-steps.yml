@@ -33,7 +33,7 @@ jobs:
         run: |
           cd "$GITHUB_WORKSPACE"
           mkdir -p "${RUNNER_WORKDIR}/.home" "${RUNNER_WORKDIR}/.pip-cache" "${RUNNER_WORKDIR}/.tmp" "${RUNNER_WORKDIR}/.uv-cache" "${RUNNER_WORKDIR}/.cache"
-          python3 -m venv --system-site-packages .venv
+          /opt/venv/bin/python -m venv --system-site-packages .venv
           source .venv/bin/activate
           python -m pip install --upgrade pip
           python -m pip install -e . --cache-dir "${RUNNER_WORKDIR}/.pip-cache"
