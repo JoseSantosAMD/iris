@@ -36,7 +36,7 @@ jobs:
           /opt/venv/bin/python -m venv --system-site-packages .venv
           source .venv/bin/activate
           python -m pip install --upgrade pip
-          python -m pip install -e . --cache-dir "${RUNNER_WORKDIR}/.pip-cache"
+          python -m pip install -e ".[dev]" --cache-dir "${RUNNER_WORKDIR}/.pip-cache"
 
       - name: Install IntelliKit Python packages
         run: |
