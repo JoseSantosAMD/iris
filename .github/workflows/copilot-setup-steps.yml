@@ -20,48 +20,43 @@ jobs:
 
     env:
       PIP_CACHE_DIR: ${{ github.workspace }}/.pip-cache
+      PIP_NO_CACHE_DIR: 1
+      TMPDIR: ${{ github.workspace }}/.tmp
+      UV_CACHE_DIR: ${{ github.workspace }}/.uv-cache
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Create task venv for Copilot
-        env:
-          PIP_CACHE_DIR: ${{ github.workspace }}/.pip-cache
-          TMPDIR: ${{ github.workspace }}/.tmp
         run: |
           cd "$GITHUB_WORKSPACE"
           mkdir -p .pip-cache .tmp
           python3 -m venv --system-site-packages .venv
           source .venv/bin/activate
           python -m pip install --upgrade pip
-          python -m pip install --no-cache-dir -e .
+          python -m pip install -e .
 
       - name: Install IntelliKit Python packages
-        env:
-          PIP_CACHE_DIR: ${{ github.workspace }}/.pip-cache
         run: |
-          source $GITHUB_WORKSPACE/.venv/bin/activate
+          source "$GITHUB_WORKSPACE/.venv/bin/activate"
           pip install "git+https://github.com/AMDResearch/intellikit.git#subdirectory=accordo"
           pip install "git+https://github.com/AMDResearch/intellikit.git#subdirectory=linex"
           pip install "git+https://github.com/AMDResearch/intellikit.git#subdirectory=metrix"
           pip install "git+https://github.com/AMDResearch/intellikit.git#subdirectory=nexus"
 
       - name: Install uv for MCP servers
-        env:
-          PIP_CACHE_DIR: ${{ github.workspace }}/.pip-cache
-          UV_CACHE_DIR: ${{ github.workspace }}/.uv-cache
         run: |
-          source $GITHUB_WORKSPACE/.venv/bin/activate
+          source "$GITHUB_WORKSPACE/.venv/bin/activate"
           pip install uv
 
       - name: Clone IntelliKit for MCP servers
         run: |
-          git clone --depth 1 https://github.com/AMDResearch/intellikit.git $GITHUB_WORKSPACE/.intellikit
+          git clone --depth 1 https://github.com/AMDResearch/intellikit.git "$GITHUB_WORKSPACE/.intellikit"
 
       - name: Install IntelliKit agent skills
         run: |
-          cd $GITHUB_WORKSPACE
+          cd "$GITHUB_WORKSPACE"
           mkdir -p .github/agents/skills
           curl -sSL https://raw.githubusercontent.com/AMDResearch/intellikit/main/install/skills/install.sh | \
             bash -s -- --target agents --base-url https://raw.githubusercontent.com/AMDResearch/intellikit/main
@@ -69,7 +64,7 @@ jobs:
 
       - name: Make venv default for subsequent steps
         run: |
-          echo "$GITHUB_WORKSPACE/.venv/bin" >> $GITHUB_PATH
+          echo "$GITHUB_WORKSPACE/.venv/bin" >> "$GITHUB_PATH"
 
       - name: Verify ROCm and GPU visibility
         run: |
