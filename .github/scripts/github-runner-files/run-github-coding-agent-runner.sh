@@ -101,7 +101,7 @@ if [ -z "$RUNNER_NAME" ]; then
     RUNNER_NAME="${REPO_NAME}-runner-${CLUSTER_NAME}-$(date +%Y%m%d)-$(date +%H%M%S)"
 fi
 RUNNER_LABELS="${RUNNER_LABELS:-copilot}"
-mkdir -p "${RUNNER_WORKDIR}"
+mkdir -p "${RUNNER_WORKDIR}" "${RUNNER_WORKDIR}/.home" "${RUNNER_WORKDIR}/.pip-cache" "${RUNNER_WORKDIR}/.tmp" "${RUNNER_WORKDIR}/.cache"
 [ -n "${USE_OVERLAY}" ] && [ "${USE_OVERLAY}" != "0" ] && mkdir -p "${OVERLAY_DIR}"
 
 echo "=========================================="
@@ -170,6 +170,10 @@ if [ -n "${USE_OVERLAY}" ] && [ "${USE_OVERLAY}" != "0" ] && [ -d "${OVERLAY_DIR
         --env "RUNNER_NAME=${RUNNER_NAME}" \
         --env "RUNNER_LABELS=${RUNNER_LABELS}" \
         --env "RUNNER_WORKDIR=${RUNNER_WORKDIR}" \
+        --env "HOME=${RUNNER_WORKDIR}/.home" \
+        --env "PIP_CACHE_DIR=${RUNNER_WORKDIR}/.pip-cache" \
+        --env "TMPDIR=${RUNNER_WORKDIR}/.tmp" \
+        --env "XDG_CACHE_HOME=${RUNNER_WORKDIR}/.cache" \
         --rocm \
         "$SIF_PATH" \
         /bin/bash -c "/runner-scripts/start.sh"
@@ -188,6 +192,10 @@ else
         --env "RUNNER_NAME=${RUNNER_NAME}" \
         --env "RUNNER_LABELS=${RUNNER_LABELS}" \
         --env "RUNNER_WORKDIR=${RUNNER_WORKDIR}" \
+        --env "HOME=${RUNNER_WORKDIR}/.home" \
+        --env "PIP_CACHE_DIR=${RUNNER_WORKDIR}/.pip-cache" \
+        --env "TMPDIR=${RUNNER_WORKDIR}/.tmp" \
+        --env "XDG_CACHE_HOME=${RUNNER_WORKDIR}/.cache" \
         --rocm \
         "$SIF_PATH" \
         /bin/bash -c "/runner-scripts/start.sh"
