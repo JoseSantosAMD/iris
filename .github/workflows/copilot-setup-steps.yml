@@ -41,11 +41,11 @@ jobs:
       - name: Install IntelliKit Python packages
         run: |
           source "$GITHUB_WORKSPACE/.venv/bin/activate"
-          # accordo requires kerneldb which needs libdwarf-dev; skipped until added to container
+          # accordo and nexus require kerneldb which needs libdwarf-dev; skipped until added to container
           # pip install --cache-dir "${RUNNER_WORKDIR}/.pip-cache" "git+https://github.com/AMDResearch/intellikit.git#subdirectory=accordo"
+          # pip install --cache-dir "${RUNNER_WORKDIR}/.pip-cache" "git+https://github.com/AMDResearch/intellikit.git#subdirectory=nexus"
           pip install --cache-dir "${RUNNER_WORKDIR}/.pip-cache" "git+https://github.com/AMDResearch/intellikit.git#subdirectory=linex"
           pip install --cache-dir "${RUNNER_WORKDIR}/.pip-cache" "git+https://github.com/AMDResearch/intellikit.git#subdirectory=metrix"
-          pip install --cache-dir "${RUNNER_WORKDIR}/.pip-cache" "git+https://github.com/AMDResearch/intellikit.git#subdirectory=nexus"
 
       - name: Install uv for MCP servers
         run: |
