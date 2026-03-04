@@ -12,6 +12,12 @@ Iris is a Triton-based framework for Remote Memory Access (RMA) operations on AM
 
 **FOLLOW THESE INSTRUCTIONS EXACTLY. Reference these instructions first before using search or bash commands.**
 
+## Environment
+
+When running in the Copilot workflow:
+- **Always activate the venv first**: `source "$GITHUB_WORKSPACE/.venv/bin/activate"` before running any Python or pip command. The venv contains torch, iris, tritonblas, IntelliKit, and all project dependencies.
+- Use `GITHUB_WORKSPACE` for installs, cache, and temp files. Avoid `$HOME`, `~`, and `/tmp`—they may be unwritable in containers.
+
 ## Prerequisites
 
 - **GPU**: AMD GPUs with ROCm compatibility (tested on MI300X, MI350X & MI355X)
@@ -119,6 +125,16 @@ iris/
 ├── docker/                     # Docker configuration
 └── docs/                      # Documentation
 ```
+
+## IntelliKit (Profiling and Analysis)
+
+IntelliKit tools are preinstalled for GPU profiling and validation:
+- **Metrix**: Human-readable GPU metrics (`from metrix import Metrix`)
+- **Accordo**: Kernel correctness validation (`from accordo import Accordo`)
+- **Linex**: Source-level GPU profiling (`from linex import Linex`)
+- **Nexus**: HSA packet source extraction (`from nexus import Nexus`)
+
+Use these when optimizing kernels or validating correctness.
 
 ## License
 
