@@ -31,7 +31,7 @@ jobs:
           OPT_SITE=$(/opt/venv/bin/python -c "import site; print(site.getsitepackages()[0])")
           VENV_PY_VER=$(/opt/venv/bin/python -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
           VENV_SITE=".venv/lib/python${VENV_PY_VER}/site-packages"
-          echo "$OPT_SITE" > "$VENV_SITE/opt-venv.pth"
+          echo "import site; site.addsitedir('$OPT_SITE')" > "$VENV_SITE/opt-venv.pth"
           source .venv/bin/activate
           python -m pip install --upgrade pip
           python -m pip install -e . --cache-dir "${RUNNER_WORKDIR}/.pip-cache"
