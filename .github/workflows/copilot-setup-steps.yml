@@ -18,14 +18,15 @@ jobs:
 
     timeout-minutes: 59
 
-    env:
-      HOME: ${{ env.RUNNER_WORKDIR }}/.home
-      PIP_CACHE_DIR: ${{ env.RUNNER_WORKDIR }}/.pip-cache
-      TMPDIR: ${{ env.RUNNER_WORKDIR }}/.tmp
-      UV_CACHE_DIR: ${{ env.RUNNER_WORKDIR }}/.uv-cache
-      XDG_CACHE_HOME: ${{ env.RUNNER_WORKDIR }}/.cache
-
     steps:
+      - name: Set environment from runner variables
+        run: |
+          echo "HOME=${RUNNER_WORKDIR}/.home"           >> "$GITHUB_ENV"
+          echo "PIP_CACHE_DIR=${RUNNER_WORKDIR}/.pip-cache" >> "$GITHUB_ENV"
+          echo "TMPDIR=${RUNNER_WORKDIR}/.tmp"           >> "$GITHUB_ENV"
+          echo "UV_CACHE_DIR=${RUNNER_WORKDIR}/.uv-cache"   >> "$GITHUB_ENV"
+          echo "XDG_CACHE_HOME=${RUNNER_WORKDIR}/.cache" >> "$GITHUB_ENV"
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
