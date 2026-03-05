@@ -54,3 +54,7 @@ __pycache__/
 resources/
 gpucore.*
 logs/
+.rocprofv3/
+.intellikit/
+.agents/
+.github/agents/
