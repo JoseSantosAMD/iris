@@ -25,13 +25,9 @@ jobs:
       - name: Create task venv for Copilot
         run: |
           cd "$GITHUB_WORKSPACE"
-          mkdir -p "${RUNNER_WORKDIR}/.home" "${RUNNER_WORKDIR}/.pip-cache" "${RUNNER_WORKDIR}/.tmp" "${RUNNER_WORKDIR}/.uv-cache" "${RUNNER_WORKDIR}/.cache"
-          echo "UV_CACHE_DIR=${RUNNER_WORKDIR}/.uv-cache" >> "$GITHUB_ENV"
+          mkdir -p "${RUNNER_WORKDIR}/.pip-cache"
+          # Create venv with access to /opt/venv packages
           /opt/venv/bin/python -m venv --system-site-packages .venv
-          OPT_SITE=$(/opt/venv/bin/python -c "import site; print(site.getsitepackages()[0])")
-          VENV_PY_VER=$(/opt/venv/bin/python -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
-          VENV_SITE=".venv/lib/python${VENV_PY_VER}/site-packages"
-          echo "import site; site.addsitedir('$OPT_SITE')" > "$VENV_SITE/opt-venv.pth"
           source .venv/bin/activate
           python -m pip install --upgrade pip
           python -m pip install -e . --cache-dir "${RUNNER_WORKDIR}/.pip-cache"
