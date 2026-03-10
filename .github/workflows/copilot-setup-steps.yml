@@ -13,6 +13,24 @@ jobs:
     timeout-minutes: 59
 
     steps:
+      # Copilot launcher expects Node at RUNNER_TEMP/ghcca-node/node/bin/node
+      - name: Ensure Node at Copilot tool-cache path
+        run: |
+          TEMP_DIR="${RUNNER_TEMP:-${RUNNER_WORKDIR}/_temp}"
+          GHCCA_NODE="${TEMP_DIR}/ghcca-node/node"
+          if [ ! -f "${GHCCA_NODE}/bin/node" ]; then
+            echo "Installing Node at ${TEMP_DIR}/ghcca-node for Copilot runtime..."
+            mkdir -p "${TEMP_DIR}/ghcca-node"
+            cd "${TEMP_DIR}/ghcca-node"
+            curl -sL "https://nodejs.org/dist/v20.18.0/node-v20.18.0-linux-x64.tar.xz" | tar -xJ
+            mv node-v20.18.0-linux-x64 node
+          fi
+
+      - name: Set up Node.js for Copilot runtime
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
