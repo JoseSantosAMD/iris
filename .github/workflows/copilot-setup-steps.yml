@@ -2,62 +2,52 @@ name: Copilot Setup Steps
 
 on:
   workflow_dispatch:
+  issue_comment:
+    types: [created, edited]
 
 jobs:
   copilot-setup-steps:
-    runs-on: [self-hosted, copilot]
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.issue.pull_request && contains(github.event.comment.body, '@copilot'))
+    runs-on: [self-hosted, copilot, apptainer, iris]
 
     permissions:
       contents: read
+      pull-requests: read
 
     timeout-minutes: 59
 
+    env:
+      HOME: ${{ env.RUNNER_WORKDIR }}/.home
+      TMPDIR: ${{ env.RUNNER_WORKDIR }}/.tmp
+
     steps:
-      # Copilot launcher expects Node at RUNNER_TEMP/ghcca-node/node/bin/node
-      - name: Ensure Node at Copilot tool-cache path
-        run: |
-          TEMP_DIR="${RUNNER_TEMP:-${RUNNER_WORKDIR}/_temp}"
-          GHCCA_NODE="${TEMP_DIR}/ghcca-node/node"
-          if [ ! -f "${GHCCA_NODE}/bin/node" ]; then
-            echo "Installing Node at ${TEMP_DIR}/ghcca-node for Copilot runtime..."
-            mkdir -p "${TEMP_DIR}/ghcca-node"
-            cd "${TEMP_DIR}/ghcca-node"
-            curl -sL "https://nodejs.org/dist/v20.18.0/node-v20.18.0-linux-x64.tar.xz" | tar -xJ
-            mv node-v20.18.0-linux-x64 node
-          fi
-
-      - name: Set up Node.js for Copilot runtime
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Create task venv for Copilot
         run: |
           cd "$GITHUB_WORKSPACE"
-          # Set cache dirs once so pip/uv use them; no --cache-dir needed in later steps
-          echo "PIP_CACHE_DIR=$GITHUB_WORKSPACE/.pip-cache" >> "$GITHUB_ENV"
-          echo "UV_CACHE_DIR=$GITHUB_WORKSPACE/.uv-cache" >> "$GITHUB_ENV"
-          python3 -m venv --system-site-packages .venv
+          mkdir -p "${RUNNER_WORKDIR}/.home" "${RUNNER_WORKDIR}/.tmp"
+          /opt/venv/bin/python -m venv --system-site-packages .venv
           source .venv/bin/activate
           python -m pip install --upgrade pip
-          python -m pip install -e .
+          python -m pip install -e . --no-cache-dir
 
       - name: Install IntelliKit Python packages
         run: |
           source "$GITHUB_WORKSPACE/.venv/bin/activate"
-          # accordo and nexus require kerneldb which needs libdwarf-dev; skipped until added to container
-          # pip install "git+https://github.com/AMDResearch/intellikit.git#subdirectory=accordo"
-          # pip install "git+https://github.com/AMDResearch/intellikit.git#subdirectory=nexus"
-          pip install "git+https://github.com/AMDResearch/intellikit.git#subdirectory=linex"
-          pip install "git+https://github.com/AMDResearch/intellikit.git#subdirectory=metrix"
+          # accordo requires kerneldb which needs libdwarf-dev; skipped until added to container
+          # pip install --no-cache-dir "git+https://github.com/AMDResearch/intellikit.git#subdirectory=accordo"
+          pip install --no-cache-dir "git+https://github.com/AMDResearch/intellikit.git#subdirectory=linex"
+          pip install --no-cache-dir "git+https://github.com/AMDResearch/intellikit.git#subdirectory=metrix"
+          pip install --no-cache-dir "git+https://github.com/AMDResearch/intellikit.git#subdirectory=nexus"
 
       - name: Install uv for MCP servers
         run: |
           source "$GITHUB_WORKSPACE/.venv/bin/activate"
-          pip install uv
+          pip install --no-cache-dir uv
 
       - name: Clone IntelliKit for MCP servers
         run: |
@@ -74,6 +64,8 @@ jobs:
       - name: Make venv default for subsequent steps
         run: |
           echo "$GITHUB_WORKSPACE/.venv/bin" >> "$GITHUB_PATH"
+          echo "/opt/venv/bin" >> "$GITHUB_PATH"
+          echo "PYTHONPATH=$GITHUB_WORKSPACE/.venv/lib/python3.13/site-packages:$GITHUB_WORKSPACE${PYTHONPATH:+:$PYTHONPATH}" >> "$GITHUB_ENV"
 
       - name: Verify ROCm and GPU visibility
         run: |
