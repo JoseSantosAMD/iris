@@ -2,19 +2,13 @@ name: Copilot Setup Steps
 
 on:
   workflow_dispatch:
-  issue_comment:
-    types: [created, edited]
 
 jobs:
   copilot-setup-steps:
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      (github.event.issue.pull_request && contains(github.event.comment.body, '@copilot'))
-    runs-on: [self-hosted, copilot, apptainer, iris]
+    runs-on: [self-hosted, copilot]
 
     permissions:
       contents: read
-      pull-requests: read
 
     timeout-minutes: 59
 
@@ -25,26 +19,27 @@ jobs:
       - name: Create task venv for Copilot
         run: |
           cd "$GITHUB_WORKSPACE"
-          mkdir -p "${RUNNER_WORKDIR}/.pip-cache"
-          # Create venv with access to /opt/venv packages
-          /opt/venv/bin/python -m venv --system-site-packages .venv
+          # Set cache dirs once so pip/uv use them; no --cache-dir needed in later steps
+          echo "PIP_CACHE_DIR=$GITHUB_WORKSPACE/.pip-cache" >> "$GITHUB_ENV"
+          echo "UV_CACHE_DIR=$GITHUB_WORKSPACE/.uv-cache" >> "$GITHUB_ENV"
+          python3 -m venv --system-site-packages .venv
           source .venv/bin/activate
           python -m pip install --upgrade pip
-          python -m pip install -e . --cache-dir "${RUNNER_WORKDIR}/.pip-cache"
+          python -m pip install -e .
 
       - name: Install IntelliKit Python packages
         run: |
           source "$GITHUB_WORKSPACE/.venv/bin/activate"
           # accordo and nexus require kerneldb which needs libdwarf-dev; skipped until added to container
-          # pip install --cache-dir "${RUNNER_WORKDIR}/.pip-cache" "git+https://github.com/AMDResearch/intellikit.git#subdirectory=accordo"
-          # pip install --cache-dir "${RUNNER_WORKDIR}/.pip-cache" "git+https://github.com/AMDResearch/intellikit.git#subdirectory=nexus"
-          pip install --cache-dir "${RUNNER_WORKDIR}/.pip-cache" "git+https://github.com/AMDResearch/intellikit.git#subdirectory=linex"
-          pip install --cache-dir "${RUNNER_WORKDIR}/.pip-cache" "git+https://github.com/AMDResearch/intellikit.git#subdirectory=metrix"
+          # pip install "git+https://github.com/AMDResearch/intellikit.git#subdirectory=accordo"
+          # pip install "git+https://github.com/AMDResearch/intellikit.git#subdirectory=nexus"
+          pip install "git+https://github.com/AMDResearch/intellikit.git#subdirectory=linex"
+          pip install "git+https://github.com/AMDResearch/intellikit.git#subdirectory=metrix"
 
       - name: Install uv for MCP servers
         run: |
           source "$GITHUB_WORKSPACE/.venv/bin/activate"
-          pip install --cache-dir "${RUNNER_WORKDIR}/.pip-cache" uv
+          pip install uv
 
       - name: Clone IntelliKit for MCP servers
         run: |
