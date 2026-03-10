@@ -53,4 +53,5 @@ __pycache__/
 
 resources/
 gpucore.*
-logs/
+logs/.rocprofv3/
+.rocprofv3/
