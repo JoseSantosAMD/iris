@@ -18,14 +18,44 @@ jobs:
         
       - name: Create task venv for Copilot
         run: |
-          python3 -m venv $GITHUB_WORKSPACE/.venv
-          source $GITHUB_WORKSPACE/.venv/bin/activate
+          cd "$GITHUB_WORKSPACE"
+          # Set cache dirs once so pip/uv use them; no --cache-dir needed in later steps
+          echo "PIP_CACHE_DIR=$GITHUB_WORKSPACE/.pip-cache" >> "$GITHUB_ENV"
+          echo "UV_CACHE_DIR=$GITHUB_WORKSPACE/.uv-cache" >> "$GITHUB_ENV"
+          python3 -m venv --system-site-packages .venv
+          source .venv/bin/activate
           python -m pip install --upgrade pip
           python -m pip install -e .
 
+      - name: Install IntelliKit Python packages
+        run: |
+          source "$GITHUB_WORKSPACE/.venv/bin/activate"
+          # accordo and nexus require kerneldb which needs libdwarf-dev; skipped until added to container
+          # pip install "git+https://github.com/AMDResearch/intellikit.git#subdirectory=accordo"
+          # pip install "git+https://github.com/AMDResearch/intellikit.git#subdirectory=nexus"
+          pip install "git+https://github.com/AMDResearch/intellikit.git#subdirectory=linex"
+          pip install "git+https://github.com/AMDResearch/intellikit.git#subdirectory=metrix"
+
+      - name: Install uv for MCP servers
+        run: |
+          source "$GITHUB_WORKSPACE/.venv/bin/activate"
+          pip install uv
+
+      - name: Clone IntelliKit for MCP servers
+        run: |
+          git clone --depth 1 https://github.com/AMDResearch/intellikit.git "$GITHUB_WORKSPACE/.intellikit"
+
+      - name: Install IntelliKit agent skills
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          mkdir -p .github/agents/skills
+          curl -sSL https://raw.githubusercontent.com/AMDResearch/intellikit/main/install/skills/install.sh | \
+            bash -s -- --target agents --base-url https://raw.githubusercontent.com/AMDResearch/intellikit/main
+          cp -r .agents/skills/* .github/agents/skills/ 2>/dev/null || true
+
       - name: Make venv default for subsequent steps
         run: |
-          echo "$GITHUB_WORKSPACE/.venv/bin" >> $GITHUB_PATH
+          echo "$GITHUB_WORKSPACE/.venv/bin" >> "$GITHUB_PATH"
 
       - name: Verify ROCm and GPU visibility
         run: |
