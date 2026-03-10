@@ -18,10 +18,6 @@ jobs:
 
     timeout-minutes: 59
 
-    env:
-      HOME: ${{ env.RUNNER_WORKDIR }}/.home
-      TMPDIR: ${{ env.RUNNER_WORKDIR }}/.tmp
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -30,6 +26,8 @@ jobs:
         run: |
           cd "$GITHUB_WORKSPACE"
           mkdir -p "${RUNNER_WORKDIR}/.home" "${RUNNER_WORKDIR}/.tmp"
+          echo "HOME=${RUNNER_WORKDIR}/.home" >> "$GITHUB_ENV"
+          echo "TMPDIR=${RUNNER_WORKDIR}/.tmp" >> "$GITHUB_ENV"
           /opt/venv/bin/python -m venv --system-site-packages .venv
           source .venv/bin/activate
           python -m pip install --upgrade pip
