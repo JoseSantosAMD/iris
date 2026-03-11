@@ -18,10 +18,6 @@ jobs:
 
     timeout-minutes: 10
 
-    env:
-      # Timeout in ms for Playwright MCP startup; may be used by Copilot runner if supported (avoids indefinite hang)
-      COPILOT_MCP_PLAYWRIGHT_TIMEOUT_MS: 60000
-
     steps:
       - name: Create task venv for Copilot
         run: |
@@ -33,12 +29,6 @@ jobs:
           source .venv/bin/activate
           python -m pip install --upgrade pip
           python -m pip install -e . --no-cache-dir
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: "npm"
 
       - name: Install IntelliKit Python packages
         run: |
