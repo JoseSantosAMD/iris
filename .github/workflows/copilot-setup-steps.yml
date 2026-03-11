@@ -25,7 +25,7 @@ jobs:
       - name: Create task venv for Copilot
         run: |
           cd "$GITHUB_WORKSPACE"
-          mkdir -p "${RUNNER_WORKDIR}/.home" "${RUNNER_WORKDIR}/.tmp"
+          mkdir -p "${RUNNER_WORKDIR}/.home" "${RUNNER_WORKDIR}/.tmp" "${RUNNER_WORKDIR}/.pip-cache"
           echo "HOME=${RUNNER_WORKDIR}/.home" >> "$GITHUB_ENV"
           echo "TMPDIR=${RUNNER_WORKDIR}/.tmp" >> "$GITHUB_ENV"
           /opt/venv/bin/python -m venv --system-site-packages .venv
