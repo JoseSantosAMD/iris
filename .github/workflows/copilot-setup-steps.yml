@@ -51,6 +51,11 @@ jobs:
         run: |
           git clone --depth 1 https://github.com/AMDResearch/intellikit.git "$GITHUB_WORKSPACE/.intellikit"
 
+      - name: Install hip-compiler-mcp into workspace venv
+        run: |
+          source "$GITHUB_WORKSPACE/.venv/bin/activate"
+          pip install --no-cache-dir -e "$GITHUB_WORKSPACE/.intellikit/rocm_mcp"
+
       - name: Install IntelliKit agent skills
         run: |
           cd "$GITHUB_WORKSPACE"
@@ -68,10 +73,9 @@ jobs:
       - name: Test MCP server (hip-compiler-mcp)
         run: |
           cd "$GITHUB_WORKSPACE"
-          # Clear PYTHONPATH so rocm_mcp uses only its uv-managed env (avoids workspace .venv pydantic clash)
-          # Same command as repo MCP config; timeout 10s. Exit 124 = still running (success), 0 = exited (success)
+          # Single Python: hip-compiler-mcp runs from workspace .venv. Timeout 10s; 124 or 0 = success
           code=0
-          timeout 10 env -u PYTHONPATH ./.venv/bin/uv run --directory .intellikit/rocm_mcp hip-compiler-mcp || code=$?
+          timeout 10 ./.venv/bin/hip-compiler-mcp || code=$?
           if [ "$code" -eq 124 ] || [ "$code" -eq 0 ]; then
             echo "MCP server started successfully (exit $code)"
           else
