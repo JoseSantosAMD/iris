@@ -16,7 +16,11 @@ jobs:
       contents: read
       pull-requests: read
 
-    timeout-minutes: 59
+    timeout-minutes: 10
+
+    env:
+      # Timeout in ms for Playwright MCP startup; may be used by Copilot runner if supported (avoids indefinite hang)
+      COPILOT_MCP_PLAYWRIGHT_TIMEOUT_MS: 60000
 
     steps:
       - name: Checkout repository
@@ -55,6 +59,15 @@ jobs:
           echo "$GITHUB_WORKSPACE/.venv/bin" >> "$GITHUB_PATH"
           echo "/opt/venv/bin" >> "$GITHUB_PATH"
           echo "PYTHONPATH=$GITHUB_WORKSPACE/.venv/lib/python3.13/site-packages:$GITHUB_WORKSPACE${PYTHONPATH:+:$PYTHONPATH}" >> "$GITHUB_ENV"
+
+      - name: Print MCP config (if set)
+        run: |
+          if [ -n "${GITHUB_COPILOT_MCP_JSON_FROM_INPUT:-}" ]; then
+            echo "MCP config (decoded from GITHUB_COPILOT_MCP_JSON_FROM_INPUT):"
+            echo "$GITHUB_COPILOT_MCP_JSON_FROM_INPUT" | base64 -d 2>/dev/null | jq . 2>/dev/null || echo "$GITHUB_COPILOT_MCP_JSON_FROM_INPUT" | base64 -d 2>/dev/null || echo "(decode failed)"
+          else
+            echo "GITHUB_COPILOT_MCP_JSON_FROM_INPUT is not set in this step (runner may set it only for Start MCP servers step)."
+          fi
 
       - name: Verify ROCm and GPU visibility
         run: |
