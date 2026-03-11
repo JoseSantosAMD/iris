@@ -64,16 +64,6 @@ jobs:
             bash -s -- --target agents --base-url https://raw.githubusercontent.com/AMDResearch/intellikit/main
           cp -r .agents/skills/* .github/agents/skills/ 2>/dev/null || true
 
-      - name: Ensure Node for Playwright MCP
-        run: |
-          RUNNER_WORKDIR="${RUNNER_WORKDIR:-$(dirname "$(dirname "$GITHUB_WORKSPACE")")}"
-          export RUNNER_WORKDIR
-          "$GITHUB_WORKSPACE/.github/scripts/github-runner-files/ensure-node-for-copilot.sh"
-          # So "Start MCP servers" can find npm (Playwright MCP)
-          NODE_BIN="$(dirname "$RUNNER_WORKDIR")/ghcca-node/node/bin"
-          echo "$NODE_BIN" >> "$GITHUB_PATH"
-          echo "PATH=$NODE_BIN:$PATH" >> "$GITHUB_ENV"
-
       - name: Make venv default for subsequent steps
         run: |
           echo "$GITHUB_WORKSPACE/.venv/bin" >> "$GITHUB_PATH"
