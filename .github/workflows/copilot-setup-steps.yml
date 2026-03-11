@@ -50,37 +50,6 @@ jobs:
             bash -s -- --target agents --base-url https://raw.githubusercontent.com/AMDResearch/intellikit/main
           cp -r .agents/skills/* .github/agents/skills/ 2>/dev/null || true
 
-      - name: Ensure Node for Playwright MCP (unblocks Start MCP servers step)
-        run: |
-          RUNNER_WORKDIR="${RUNNER_WORKDIR:-$(dirname "$(dirname "$GITHUB_WORKSPACE")")}"
-          export RUNNER_WORKDIR
-          "$GITHUB_WORKSPACE/.github/scripts/github-runner-files/ensure-node-for-copilot.sh"
-          NODE_BIN="$(dirname "$RUNNER_WORKDIR")/ghcca-node/node/bin"
-          echo "$NODE_BIN" >> "$GITHUB_PATH"
-          echo "PATH=$NODE_BIN:$PATH" >> "$GITHUB_ENV"
-
-      - name: Pre-cache Playwright MCP
-        run: |
-          npm cache add @playwright/mcp@0.0.40
-          echo "Playwright MCP package cached for Start MCP servers step"
-
-      - name: Verify Node and npm
-        run: |
-          node --version
-          npm --version
-          echo "Node and npm are on PATH and working"
-
-      - name: Verify Playwright MCP can run
-        run: |
-          code=0
-          timeout 15 npx --yes @playwright/mcp@0.0.40 2>/dev/null || code=$?
-          if [ "$code" -eq 124 ] || [ "$code" -eq 0 ]; then
-            echo "Playwright MCP is available and runnable (exit $code)"
-          else
-            echo "Playwright MCP check failed (exit $code)"
-            exit 1
-          fi
-
       - name: Make venv default for subsequent steps
         run: |
           echo "$GITHUB_WORKSPACE/.venv/bin" >> "$GITHUB_PATH"
