@@ -65,6 +65,19 @@ jobs:
           echo "/opt/venv/bin" >> "$GITHUB_PATH"
           echo "PYTHONPATH=$GITHUB_WORKSPACE/.venv/lib/python3.13/site-packages:$GITHUB_WORKSPACE${PYTHONPATH:+:$PYTHONPATH}" >> "$GITHUB_ENV"
 
+      - name: Test MCP server (hip-compiler-mcp)
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          # Same command as repo MCP config; timeout 10s. Exit 124 = still running (success), 0 = exited (success)
+          code=0
+          timeout 10 ./.venv/bin/uv run --directory .intellikit/rocm_mcp hip-compiler-mcp || code=$?
+          if [ "$code" -eq 124 ] || [ "$code" -eq 0 ]; then
+            echo "MCP server started successfully (exit $code)"
+          else
+            echo "MCP server failed with exit code $code"
+            exit 1
+          fi
+
       - name: Verify ROCm and GPU visibility
         run: |
           echo "=== rocminfo ==="
