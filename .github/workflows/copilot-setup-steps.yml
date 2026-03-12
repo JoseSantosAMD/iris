@@ -16,7 +16,7 @@ jobs:
       contents: read
       pull-requests: read
 
-    timeout-minutes: 60
+    timeout-minutes: 59
 
     steps:
       - name: Checkout repository
@@ -25,9 +25,6 @@ jobs:
       - name: Create task venv for Copilot
         run: |
           cd "$GITHUB_WORKSPACE"
-          mkdir -p "${RUNNER_WORKDIR}/.home" "${RUNNER_WORKDIR}/.tmp"
-          echo "HOME=${RUNNER_WORKDIR}/.home" >> "$GITHUB_ENV"
-          echo "TMPDIR=${RUNNER_WORKDIR}/.tmp" >> "$GITHUB_ENV"
           /opt/venv/bin/python -m venv --system-site-packages .venv
           source .venv/bin/activate
           python -m pip install --upgrade pip
@@ -36,8 +33,7 @@ jobs:
       - name: Install IntelliKit Python packages
         run: |
           source "$GITHUB_WORKSPACE/.venv/bin/activate"
-          # accordo requires kerneldb which needs libdwarf-dev; skipped until added to container
-          # pip install --no-cache-dir "git+https://github.com/AMDResearch/intellikit.git#subdirectory=accordo"
+          pip install --no-cache-dir "git+https://github.com/AMDResearch/intellikit.git#subdirectory=accordo"
           pip install --no-cache-dir "git+https://github.com/AMDResearch/intellikit.git#subdirectory=linex"
           pip install --no-cache-dir "git+https://github.com/AMDResearch/intellikit.git#subdirectory=metrix"
           pip install --no-cache-dir "git+https://github.com/AMDResearch/intellikit.git#subdirectory=nexus"
