@@ -1,0 +1,137 @@
+{
+  "benchmark": {
+    "description": "GEMM All-Scatter benchmark (Example 07)",
+    "matrix_size": {
+      "M": 4096,
+      "N": 2048,
+      "K": 4096
+    },
+    "dtype": "fp16",
+    "world_size": 2,
+    "algorithm": "persistent_gemm_all_scatter",
+    "throughput_tflops": {
+      "small_4096x2048x4096": 146.5,
+      "default_8192x4608x36864": 611.8
+    },
+    "latency_ms": {
+      "small_4096x2048x4096": 0.469,
+      "default_8192x4608x36864": 4.549
+    },
+    "gpu": "MI300X",
+    "num_replays": 3,
+    "profiler": "IntelliKit Metrix"
+  },
+  "kernel_profiling": {
+    "dispatch_452:persistent_gemm_all_scatter": {
+      "duration_us": {
+        "min": 300.953,
+        "max": 1176.495,
+        "avg": 602.9203333333334
+      },
+      "metrics": {
+        "memory.hbm_bandwidth_utilization": {
+          "min": 1.1002721046439674,
+          "max": 0.7477245561481676,
+          "avg": 0.8697097441859015,
+          "count": 3
+        },
+        "memory.hbm_read_bandwidth": {
+          "min": 51.344068336279484,
+          "max": 37.1381113065353,
+          "avg": 41.90058756030739,
+          "count": 3
+        },
+        "memory.hbm_write_bandwidth": {
+          "min": 6.9703532098507885,
+          "max": 2.4912901693175735,
+          "avg": 4.194028881545392,
+          "count": 3
+        },
+        "memory.bytes_transferred_hbm": {
+          "min": 141632512.0,
+          "max": 326411264.0,
+          "avg": 204862613.33333334,
+          "count": 3
+        },
+        "memory.l1_hit_rate": {
+          "min": 66.73415852187826,
+          "max": 66.73150012993763,
+          "avg": 66.7323862605845,
+          "count": 3
+        },
+        "memory.l2_hit_rate": {
+          "min": 58.868169864898746,
+          "max": 68.14033983835816,
+          "avg": 72.03185716187203,
+          "count": 3
+        },
+        "memory.l2_bandwidth": {
+          "min": 144.61376167942115,
+          "max": 123.2931168144759,
+          "avg": 164.37238361196927,
+          "count": 3
+        },
+        "memory.coalescing_efficiency": {
+          "min": 25.0,
+          "max": 25.0,
+          "avg": 25.0,
+          "count": 3
+        },
+        "memory.global_load_efficiency": {
+          "min": 12.538380920684359,
+          "max": 12.537379014048405,
+          "avg": 12.537712965135578,
+          "count": 3
+        },
+        "memory.global_store_efficiency": {
+          "min": 6.25,
+          "max": 6.25,
+          "avg": 6.25,
+          "count": 3
+        },
+        "memory.lds_bank_conflicts": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 0.0,
+          "count": 3
+        },
+        "memory.atomic_latency": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 0.0,
+          "count": 3
+        },
+        "compute.total_flops": {
+          "min": 34360786944.0,
+          "max": 720430284800.0,
+          "avg": 263050619562.66666,
+          "count": 3
+        },
+        "compute.hbm_gflops": {
+          "min": 116432.64425491252,
+          "max": 158677.29069695473,
+          "avg": 153753.77490063946,
+          "count": 3
+        },
+        "compute.hbm_arithmetic_intensity": {
+          "min": 240.72700288686437,
+          "max": 1972.8716381204908,
+          "avg": 1206.2224864348245,
+          "count": 3
+        },
+        "compute.l2_arithmetic_intensity": {
+          "min": 40.87954206519897,
+          "max": 856.680606365483,
+          "avg": 312.85160238506603,
+          "count": 3
+        },
+        "compute.l1_arithmetic_intensity": {
+          "min": 17.031704781704782,
+          "max": 357.09764000779626,
+          "avg": 130.38701652373527,
+          "count": 3
+        }
+      }
+    }
+  }
+}
