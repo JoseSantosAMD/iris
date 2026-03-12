@@ -18,12 +18,14 @@ jobs:
 
     timeout-minutes: 10
 
-
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Create task venv for Copilot
         run: |
           cd "$GITHUB_WORKSPACE"
-          mkdir -p "${RUNNER_WORKDIR}/.home" "${RUNNER_WORKDIR}/.tmp" "${RUNNER_WORKDIR}/.pip-cache"
+          mkdir -p "${RUNNER_WORKDIR}/.home" "${RUNNER_WORKDIR}/.tmp"
           echo "HOME=${RUNNER_WORKDIR}/.home" >> "$GITHUB_ENV"
           echo "TMPDIR=${RUNNER_WORKDIR}/.tmp" >> "$GITHUB_ENV"
           /opt/venv/bin/python -m venv --system-site-packages .venv
@@ -34,10 +36,20 @@ jobs:
       - name: Install IntelliKit Python packages
         run: |
           source "$GITHUB_WORKSPACE/.venv/bin/activate"
-          pip install --no-cache-dir "git+https://github.com/AMDResearch/intellikit.git#subdirectory=accordo"
+          # accordo requires kerneldb which needs libdwarf-dev; skipped until added to container
+          # pip install --no-cache-dir "git+https://github.com/AMDResearch/intellikit.git#subdirectory=accordo"
           pip install --no-cache-dir "git+https://github.com/AMDResearch/intellikit.git#subdirectory=linex"
           pip install --no-cache-dir "git+https://github.com/AMDResearch/intellikit.git#subdirectory=metrix"
           pip install --no-cache-dir "git+https://github.com/AMDResearch/intellikit.git#subdirectory=nexus"
+
+      - name: Install uv for MCP servers
+        run: |
+          source "$GITHUB_WORKSPACE/.venv/bin/activate"
+          pip install --no-cache-dir uv
+
+      - name: Clone IntelliKit for MCP servers
+        run: |
+          git clone --depth 1 https://github.com/AMDResearch/intellikit.git "$GITHUB_WORKSPACE/.intellikit"
 
       - name: Install IntelliKit agent skills
         run: |
