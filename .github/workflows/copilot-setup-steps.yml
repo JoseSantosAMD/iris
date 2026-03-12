@@ -22,18 +22,17 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Commented out for testing
-      # - name: Create task venv for Copilot
-      #   run: |
-      #     cd "$GITHUB_WORKSPACE"
-      #     /opt/venv/bin/python -m venv --system-site-packages .venv
-      #     source .venv/bin/activate
-      #     python -m pip install --upgrade pip
-      #     python -m pip install -e . --no-cache-dir
+      - name: Create task venv for Copilot
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          /opt/venv/bin/python -m venv --system-site-packages .venv
+          source .venv/bin/activate
+          python -m pip install --upgrade pip
+          python -m pip install -e . --no-cache-dir
 
       - name: Install IntelliKit Python packages
         run: |
-          source /opt/venv/bin/activate
+          source "$GITHUB_WORKSPACE/.venv/bin/activate"
           pip install --no-cache-dir "git+https://github.com/AMDResearch/intellikit.git#subdirectory=accordo"
           pip install --no-cache-dir "git+https://github.com/AMDResearch/intellikit.git#subdirectory=linex"
           pip install --no-cache-dir "git+https://github.com/AMDResearch/intellikit.git#subdirectory=metrix"
@@ -41,7 +40,7 @@ jobs:
 
       - name: Install uv for MCP servers
         run: |
-          source /opt/venv/bin/activate
+          source "$GITHUB_WORKSPACE/.venv/bin/activate"
           pip install --no-cache-dir uv
 
       - name: Clone IntelliKit for MCP servers
@@ -58,10 +57,8 @@ jobs:
 
       - name: Make venv default for subsequent steps
         run: |
-          # Use container Python; .venv commented out for testing
-          # echo "$GITHUB_WORKSPACE/.venv/bin" >> "$GITHUB_PATH"
-          echo "/opt/venv/bin" >> "$GITHUB_PATH"
-          echo "PYTHONPATH=/opt/venv/lib/python3.13/site-packages:$GITHUB_WORKSPACE${PYTHONPATH:+:$PYTHONPATH}" >> "$GITHUB_ENV"
+          echo "$GITHUB_WORKSPACE/.venv/bin" >> "$GITHUB_PATH"
+          echo "PYTHONPATH=$GITHUB_WORKSPACE/.venv/lib/python3.13/site-packages:$GITHUB_WORKSPACE${PYTHONPATH:+:$PYTHONPATH}" >> "$GITHUB_ENV"
 
       - name: Verify ROCm and GPU visibility
         run: |
