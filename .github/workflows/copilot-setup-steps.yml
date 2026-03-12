@@ -16,21 +16,42 @@ jobs:
       contents: read
       pull-requests: read
 
-    timeout-minutes: 600
+    timeout-minutes: 10
+
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
       - name: Create task venv for Copilot
         run: |
-          python3 -m venv $GITHUB_WORKSPACE/.venv
-          source $GITHUB_WORKSPACE/.venv/bin/activate
+          cd "$GITHUB_WORKSPACE"
+          mkdir -p "${RUNNER_WORKDIR}/.home" "${RUNNER_WORKDIR}/.tmp" "${RUNNER_WORKDIR}/.pip-cache"
+          echo "HOME=${RUNNER_WORKDIR}/.home" >> "$GITHUB_ENV"
+          echo "TMPDIR=${RUNNER_WORKDIR}/.tmp" >> "$GITHUB_ENV"
+          /opt/venv/bin/python -m venv --system-site-packages .venv
+          source .venv/bin/activate
           python -m pip install --upgrade pip
+          python -m pip install -e . --no-cache-dir
+
+      - name: Install IntelliKit Python packages
+        run: |
+          source "$GITHUB_WORKSPACE/.venv/bin/activate"
+          pip install --no-cache-dir "git+https://github.com/AMDResearch/intellikit.git#subdirectory=accordo"
+          pip install --no-cache-dir "git+https://github.com/AMDResearch/intellikit.git#subdirectory=linex"
+          pip install --no-cache-dir "git+https://github.com/AMDResearch/intellikit.git#subdirectory=metrix"
+          pip install --no-cache-dir "git+https://github.com/AMDResearch/intellikit.git#subdirectory=nexus"
+
+      - name: Install IntelliKit agent skills
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          mkdir -p .github/agents/skills
+          curl -sSL https://raw.githubusercontent.com/AMDResearch/intellikit/main/install/skills/install.sh | \
+            bash -s -- --target agents --base-url https://raw.githubusercontent.com/AMDResearch/intellikit/main
+          cp -r .agents/skills/* .github/agents/skills/ 2>/dev/null || true
 
       - name: Make venv default for subsequent steps
         run: |
-          echo "$GITHUB_WORKSPACE/.venv/bin" >> $GITHUB_PATH
+          echo "$GITHUB_WORKSPACE/.venv/bin" >> "$GITHUB_PATH"
+          echo "/opt/venv/bin" >> "$GITHUB_PATH"
+          echo "PYTHONPATH=$GITHUB_WORKSPACE/.venv/lib/python3.13/site-packages:$GITHUB_WORKSPACE${PYTHONPATH:+:$PYTHONPATH}" >> "$GITHUB_ENV"
 
       - name: Verify ROCm and GPU visibility
         run: |
