@@ -28,6 +28,9 @@ omni*.pdf
 slurm*.out
 
 *.egg-info
+.rocprofv3/
+.intellikit/
+.agents/
 
 examples/gemm/results/*
 asm/
