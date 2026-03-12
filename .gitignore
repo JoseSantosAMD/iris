@@ -58,3 +58,8 @@ logs/
 *.cap
 hsakmt_counters.csv
 core
+
+# Profiling artifacts
+.rocprofv3/
+.intellikit/
+.agents/
