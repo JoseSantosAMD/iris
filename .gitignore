@@ -58,3 +58,4 @@ logs/
 *.cap
 hsakmt_counters.csv
 core
+.rocprofv3/
