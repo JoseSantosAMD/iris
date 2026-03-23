@@ -58,3 +58,12 @@ logs/
 *.cap
 hsakmt_counters.csv
 core
+
+# Profiling artifacts
+.rocprofv3/
+.intellikit
+*/.rocprofv3/
+
+# Agent skill definitions (managed by IntelliKit)
+.agents/
+.github/agents/
