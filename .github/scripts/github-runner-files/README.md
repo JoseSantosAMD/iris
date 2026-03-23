@@ -188,6 +188,59 @@ scancel <job_id>
 # Resubmit: either same flags (standalone) or same env then sbatch run-github-coding-agent-runner.sh
 ```
 
+### MCP connection refused (127.0.0.1:2301)
+
+The GitHub Coding Agent (Copilot) may log `Failed to load tools from MCP server: Error: connect ECONNREFUSED 127.0.0.1:2301`. This is expected if no MCP (Model Context Protocol) server is running in the runner environment. The runner does not start an MCP server by default. Workflows still run; only MCP-based tools are unavailable. To use MCP, you would need to start and expose an MCP server in your setup (out of scope of this runner).
+
+### Copilot job stuck on "Waiting for MCP servers to be ready..."
+
+**Symptom:** The GitHub Copilot coding agent job hangs indefinitely on the "Start MCP Servers (Linux)" step, logging `Waiting for MCP servers to be ready...` and never progressing.
+
+**Cause:** The GitHub-managed `start-mcp-servers.sh` health-checks port 2301 using `curl` with no timeout. If a stale MCP server process from a previously cancelled job is still holding port 2301, `curl` connects but never gets an HTTP response — hanging forever.
+
+**How to diagnose:**
+```bash
+# Check what's listening on port 2301
+kubectl exec -n iris-ci <pod> -- sh -c 'grep " 0A " /proc/net/tcp'
+# 0x08FD = 2301. If it shows a listener, find who owns it:
+kubectl exec -n iris-ci <pod> -- sh -c 'grep -l "mcp" /proc/[0-9]*/cmdline 2>/dev/null | while read f; do pid=$(echo $f | cut -d/ -f3); echo "PID $pid: $(cat $f 2>/dev/null | tr "\0" " ")"; done'
+```
+
+**Fix:** Kill the stale MCP processes (only those from the josantos runner path), then re-run the workflow:
+```bash
+kubectl exec -n iris-ci <pod> -- sh -c '
+for pid in $(grep -l "mcp" /proc/[0-9]*/cmdline 2>/dev/null | cut -d/ -f3); do
+  cmd=$(cat /proc/$pid/cmdline 2>/dev/null | tr "\0" " ")
+  if echo "$cmd" | grep -q "josantos"; then
+    kill -9 $pid 2>/dev/null && echo "Killed PID $pid"
+  fi
+done'
+```
+
+**Prevention:** `start.sh` now kills stale MCP processes on runner shutdown via its `cleanup()` trap. This prevents orphaned processes from blocking the next job. If it recurs, check that the runner shutdown cleanly (i.e. the trap ran).
+
+**MCP config note:** Setting `{"mcpServers": {}}` in GitHub Settings → Copilot → Coding agent → MCP configuration does **not** prevent this — GitHub's action always starts `github-mcp-server` and `playwright` as built-in defaults regardless of your config.
+
+### Workflow fails with ModuleNotFoundError (e.g. torch)
+
+If a workflow step (or the Coding Agent) runs `python -c "import torch"` and gets `ModuleNotFoundError: No module named 'torch'`, the runner’s `PATH`/`PYTHONPATH` may not include your container’s Python environment. You can fix it in either place:
+
+**Option A — Set `env` in the workflow (recommended):** Add a job-level `env:` block so every step sees the container’s Python and packages. Example (adjust paths to match your image):
+
+```yaml
+jobs:
+  my-job:
+    runs-on: [self-hosted, copilot]
+    env:
+      ROCM_PATH: /opt/rocm
+      PATH: /opt/rocm/bin:$PATH
+      PYTHONPATH: /opt/triton:$PYTHONPATH
+    steps:
+      - run: python3 -c "import torch; print(torch.cuda.is_available())"
+```
+
+**Option B — Use runner-container.env:** Create `runner-container.env` from `runner-container.env.example` in the script directory and set `PATH`/`PYTHONPATH`/`ROCM_PATH` to match your image. The run script passes it into the container so all jobs get that env without editing each workflow.
+
 ## Security
 
 - **Tokens**: Never commit tokens. Use `--github-token=TOKEN` when running standalone, or set `GITHUB_TOKEN` when using `sbatch run-github-coding-agent-runner.sh`; do not put secrets in committed files.

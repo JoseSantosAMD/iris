@@ -7,7 +7,7 @@
 #SBATCH --error=github-coding-agent-runner-%j.err
 #SBATCH --time=8:00:00
 #SBATCH --nodes=1
-#SBATCH -p mi3008x  # MI300X partition
+#SBATCH -p mi2104x  # MI300X partition
 
 # Adjust the above SLURM parameters as needed for your system
 #
@@ -101,7 +101,7 @@ if [ -z "$RUNNER_NAME" ]; then
     RUNNER_NAME="${REPO_NAME}-runner-${CLUSTER_NAME}-$(date +%Y%m%d)-$(date +%H%M%S)"
 fi
 RUNNER_LABELS="${RUNNER_LABELS:-copilot}"
-mkdir -p "${RUNNER_WORKDIR}"
+mkdir -p "${RUNNER_WORKDIR}" "${RUNNER_WORKDIR}/.home" "${RUNNER_WORKDIR}/.pip-cache" "${RUNNER_WORKDIR}/.tmp" "${RUNNER_WORKDIR}/.cache"
 [ -n "${USE_OVERLAY}" ] && [ "${USE_OVERLAY}" != "0" ] && mkdir -p "${OVERLAY_DIR}"
 
 echo "=========================================="
