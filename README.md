@@ -19,6 +19,21 @@ Copyright (c) 2025 Advanced Micro Devices, Inc. All rights reserved.
 
 Iris is a Triton-based framework for Remote Memory Access (RMA) operations developed by AMD's Research and Advanced Development team. Iris provides SHMEM-like APIs within Triton for Multi-GPU programming. Iris' goal is to make Multi-GPU programming a first-class citizen in Triton while retaining Triton's programmability and performance.
 
+## Table of Contents
+
+- [Latest Updates](#latest-with-iris-)
+- [Key Features](#key-features)
+- [Quick Start](#quick-start-guide)
+- [API Examples](#api-example)
+- [Documentation](#documentation)
+- [Supported GPUs](#supported-gpus)
+- [Roadmap](#roadmap)
+- [Troubleshooting](#troubleshooting)
+- [Contributing](#contributing)
+- [Support](#support)
+- [How to Cite](#how-to-cite)
+- [License](#license)
+
 ## Latest with Iris 🔥
 
 - [16/11/2025] Paper released: _[Iris: First-Class Multi-GPU Programming Experience in Triton](https://arxiv.org/abs/2511.12500)_
@@ -49,7 +64,9 @@ Iris is a Triton-based framework for Remote Memory Access (RMA) operations devel
 
 ## API Example
 
-Here's a simple example showing how to perform remote memory operations between GPUs using Iris:
+### Basic Remote Memory Operations
+
+Here's a simple example demonstrating how one GPU (rank 0) directly writes to another GPU's (rank 1) memory using Iris:
 
 ```python
 import torch
@@ -118,12 +135,22 @@ if __name__ == "__main__":
     mp.spawn(_worker, args=(world_size,), nprocs=world_size, join=True)
 ```
 
+This example shows the key concepts:
+- **Symmetric Heap**: Each GPU allocates a symmetric heap for remote access
+- **Direct RMA**: Rank 0 can directly store to Rank 1's memory without explicit message passing
+- **Triton Integration**: Standard Triton kernel with Iris store operations
+
 ### Gluon-style API (Experimental)
 
-Iris also provides an experimental cleaner API using Triton's Gluon with `@gluon.jit` decorator:
+Iris also provides an experimental API using Triton's Gluon language. The Gluon backend offers both cleaner syntax and more fine-grained control over memory layouts and data movement when needed:
 
 > [!NOTE]
 > **Requirements for Gluon backend**: ROCm 7.0+ and Triton commit [aafec417bded34db6308f5b3d6023daefae43905](https://github.com/triton-lang/triton/tree/aafec417bded34db6308f5b3d6023daefae43905) or later are required to use the experimental Gluon APIs.
+
+Key advantages over the standard API:
+- Device context encapsulates heap bases (no need to pass `heap_bases_ptr` separately)
+- Explicit control over memory layouts for performance-critical applications
+- Cleaner, more maintainable code
 
 ```python
 import torch
@@ -190,10 +217,21 @@ if __name__ == "__main__":
 
 ## Quick Start Guide
 
-### Quick Installation
+### Prerequisites
 
-> [!NOTE]
-> **Requirements**: Python 3.10+, PyTorch 2.0+ (ROCm version), ROCm 6.3.1+ HIP runtime, Triton, and setuptools>=61
+Before installing Iris, ensure you have:
+
+- **Python**: Version 3.10 or higher
+- **PyTorch**: Version 2.0+ with ROCm support
+- **ROCm/HIP Runtime**: Version 6.3.1 or higher
+- **Triton**: Compatible with your ROCm version
+- **Build Tools**: setuptools>=61
+- **Hardware**: AMD GPU (MI300X, MI350X, MI355X recommended)
+
+> [!TIP]
+> Don't have an AMD GPU? You can still contribute! See our [Contributing Guide](docs/CONTRIBUTING.md) for details on developing without GPU access.
+
+### Quick Installation
 
 For a quick installation directly from the repository:
 
@@ -203,10 +241,10 @@ pip install git+https://github.com/ROCm/iris.git
 
 ### Docker Compose (Recommended for Development)
 
-The recommended way to get started is using Docker Compose, which provides a development environment with the Iris directory mounted inside the container. This allows you to make changes to the code outside the container and see them reflected inside.
+The recommended way to get started is using Docker Compose, which provides a complete development environment with all dependencies pre-installed:
 
 ```shell
-# Start the development container
+# Start the development container (first build takes 45-60 minutes)
 docker compose up --build -d
 
 # or depending on your docker version
@@ -216,14 +254,28 @@ docker-compose up --build -d
 docker attach iris-dev
 
 # Install Iris in development mode
-cd iris && pip install -e .
+cd iris && pip install -e ".[dev]"
 ```
 
-For baremetal install, Docker or Apptainer setup, see [Installation](https://rocm.github.io/iris/getting-started/installation.html).
+### Running Your First Example
 
-## Next Steps
+Once installed, try running a simple example:
 
-Check out our [examples](examples/) directory for ready-to-run scripts and usage patterns, including peer-to-peer communication and GEMM benchmarks.
+```shell
+# Run a basic load operation example
+python examples/00_load/load_bench.py
+
+# Run tests
+pytest tests/unittests/
+```
+
+### Next Steps
+
+- Explore the [examples](examples/) directory for ready-to-run scripts
+- Check out [Programming Model](https://rocm.github.io/iris/conceptual/programming-model.html) documentation
+- Read the [API Reference](https://rocm.github.io/iris/reference/api-reference.html)
+
+For more installation options (baremetal, Docker, Apptainer), see the [Installation Guide](https://rocm.github.io/iris/getting-started/installation.html).
 
 ## Supported GPUs
 
@@ -238,11 +290,52 @@ Iris currently supports:
 
 We plan to extend Iris with the following features:
 
-- **Extended GPU Support**: Testing and optimization for other AMD GPUs.
-- **RDMA Support**: Multi-node support using Remote Direct Memory Access (RDMA) for distributed computing across multiple machines.
-- **End-to-End Integration**: Comprehensive examples covering various use cases and end-to-end patterns.
+- **Extended GPU Support**: Testing and optimization for additional AMD GPUs with ROCm compatibility
+- **RDMA Support**: Multi-node support using Remote Direct Memory Access (RDMA) for distributed computing across multiple machines
+- **End-to-End Integration**: Comprehensive examples covering various use cases and production deployment patterns
+- **Performance Optimizations**: Continued improvements to kernel performance and memory efficiency
+- **Enhanced Documentation**: More tutorials, best practices guides, and performance tuning tips
 
-# Contributing
+## Troubleshooting
+
+### Common Issues
+
+#### Build Failures
+
+**Issue**: Docker build takes too long or appears stuck
+- **Solution**: The initial build can take 45-60 minutes. This is normal. Please be patient and do not cancel the build process.
+
+**Issue**: ROCm/HIP compilation errors
+- **Solution**: Ensure you have ROCm 6.3.1 or higher installed. Check with `/opt/rocm/bin/rocminfo` or verify ROCm packages.
+
+#### Runtime Errors
+
+**Issue**: `RuntimeError: No GPU available`
+- **Solution**: Verify AMD GPU is detected with `rocm-smi`. Ensure ROCm drivers are properly installed.
+
+**Issue**: `ImportError: cannot import name 'iris'`
+- **Solution**: Ensure Iris is installed with `pip install -e ".[dev]"` in the Iris repository directory.
+
+**Issue**: NCCL initialization failures
+- **Solution**: Check that PyTorch is built with ROCm support. Verify with `python -c "import torch; print(torch.version.hip)"`.
+
+#### Development Without GPU
+
+**Issue**: I don't have access to an AMD GPU
+- **Solution**: You can still contribute! Make code changes locally and rely on CI testing. Install dev dependencies with `pip install -e ".[dev]"` and run linting locally with `ruff check . --fix && ruff format .`.
+
+### Getting Help
+
+If you encounter issues not covered here:
+
+1. Check the [documentation](https://rocm.github.io/iris/)
+2. Search [existing issues](https://github.com/ROCm/iris/issues)
+3. Open a [new issue](https://github.com/ROCm/iris/issues/new/choose) with:
+   - Your environment details (ROCm version, GPU model, OS)
+   - Steps to reproduce the problem
+   - Full error messages and logs
+
+## Contributing
 
 We welcome contributions! Please see our [Contributing Guide](docs/CONTRIBUTING.md) for details on how to set up your development environment and contribute to the project.
 
